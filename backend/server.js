@@ -29,6 +29,10 @@ app.get("/api/protected", protect, (req, res) => {
   });
 });
 
+const workspaceRoutes = require("./routes/workspaceRoutes");
+
+app.use("/api/workspaces", workspaceRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
