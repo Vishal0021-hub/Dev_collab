@@ -19,6 +19,16 @@ ConnectDB();
 
 const authRoutes= require("./routes/authRoutes");
 app.use("/api/auth",authRoutes);
+
+const { protect } = require("./middelware/authmiddleware");
+
+app.get("/api/protected", protect, (req, res) => {
+  res.json({
+    message: "Protected route accessed",
+    user: req.user
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
