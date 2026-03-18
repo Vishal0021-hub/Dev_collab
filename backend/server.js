@@ -41,6 +41,10 @@ const boardRoutes = require("./routes/boardRoutes");
 
 app.use("/api/boards", boardRoutes);
 
+const taskRoutes = require("./routes/taskRoutes");
+
+app.use("/api/tasks", taskRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
