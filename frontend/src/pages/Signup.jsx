@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+import { Link } from "react-router-dom";
 const floatingParticles = Array.from({ length: 14 }, (_, i) => ({
   id: i,
   x: Math.random() * 100,
@@ -566,7 +566,7 @@ function Signup() {
               <>
                 <h2 className="su-form-title">Create your account</h2>
                 <p className="su-form-sub">
-                  Already have one? <a href="/login">Sign in →</a>
+                  Already have one? <Link to="/login">Login →</Link>
                 </p>
 
                 <div className="su-grid2">
