@@ -37,6 +37,10 @@ const projectRoutes = require("./routes/projectRoutes");
 
 app.use("/api/projects", projectRoutes);
 
+const boardRoutes = require("./routes/boardRoutes");
+
+app.use("/api/boards", boardRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
