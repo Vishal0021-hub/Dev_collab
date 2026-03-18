@@ -33,6 +33,10 @@ const workspaceRoutes = require("./routes/workspaceRoutes");
 
 app.use("/api/workspaces", workspaceRoutes);
 
+const projectRoutes = require("./routes/projectRoutes");
+
+app.use("/api/projects", projectRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

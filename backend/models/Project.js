@@ -3,7 +3,7 @@ const mongoose=require('mongoose')
 const projectschema= new mongoose.Schema({
     name:{
         type:String,
-        required : True
+        required : true
     },
 
     workspace: {
