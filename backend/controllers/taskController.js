@@ -40,3 +40,55 @@ exports.getTasks = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Update Task
+exports.updateTask = async (req, res) => {
+  try {
+
+    const { taskId } = req.params;
+    const updates = req.body;
+
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // update fields
+    Object.assign(task, updates);
+
+    await task.save();
+
+    res.json(task);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Move Task to another Board
+exports.moveTask = async (req, res) => {
+  try {
+
+    const { taskId } = req.params;
+    const { boardId } = req.body;
+
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    task.board = boardId;
+
+    await task.save();
+
+    res.json({
+      message: "Task moved successfully",
+      task
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
