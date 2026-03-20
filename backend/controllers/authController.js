@@ -13,7 +13,14 @@ exports.registerUser=async (req,res) =>{
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
+        console.log(req.body);
+    const strongPassword = /^(?=.*[A-Z])(?=.*[0-9]).{8,}$/;
 
+if (!strongPassword.test(password)) {
+  return res.status(400).json({
+    message: "Password must include 1 uppercase, 1 number, min 8 chars"
+  });
+}
     //hashpassord
     const salt = await bcrypt.genSalt(10)
     const hashpassord= await bcrypt.hash(password,salt)

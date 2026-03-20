@@ -26,16 +26,15 @@ exports.createBoard = async (req, res) => {
   }
 };
 
-// Get Boards of a Project
+// Get Boards of a Project (or all if not specified)
 exports.getBoards = async (req, res) => {
   try {
-
     const { projectId } = req.params;
 
-    const boards = await Board.find({ project: projectId }).sort("order");
+    const query = projectId ? { project: projectId } : {};
+    const boards = await Board.find(query).sort("order");
 
     res.json(boards);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

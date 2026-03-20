@@ -11,6 +11,9 @@ const { protect } = require("../middelware/authmiddleware");
 // create board
 router.post("/", protect, createBoard);
 
+// get all boards
+router.get("/", protect, getBoards);
+
 // get boards by project
 router.get("/:projectId", protect, getBoards);
 
