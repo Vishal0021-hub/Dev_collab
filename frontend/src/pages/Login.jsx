@@ -154,7 +154,7 @@ function Login() {
             <h2 className="dc-form-title">Welcome back</h2>
             <p className="dc-form-sub">
               Don't have an account?{" "}
-              <Link to="/Signup">Create one free →</Link>
+              <Link to="/signup">Create one free →</Link>
             </p>
 
             <div className="dc-field">

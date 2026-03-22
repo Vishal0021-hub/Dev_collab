@@ -1,9 +1,8 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import "../utils/collab.css";
-
 const IconLogo = () => (
   <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
     <path d="M3 6l7-3 7 3v8l-7 3-7-3V6z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -51,6 +50,7 @@ const IconCheck = () => (
 
 const Projects = () => {
   const { workspaceId }             = useParams();
+  const navigate = useNavigate();
   const [projects, setProjects]     = useState([]);
   const [workspace, setWorkspace]   = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -170,6 +170,7 @@ const Projects = () => {
                 transition={{ delay: idx * 0.055, ease: "easeOut" }}
                 className="dc-card"
                 style={{ textDecoration: "none" }}
+                onClick={() => navigate(`/boards/${p._id}`)}
               >
                 <div className="dc-card-glow" />
 

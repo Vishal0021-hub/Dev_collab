@@ -11,11 +11,7 @@ const floatingParticles = Array.from({ length: 14 }, (_, i) => ({
   duration: Math.random() * 8 + 6,
 }));
 
-const steps = ["Account", "Profile", "Done"];
-
 function Signup() {
-  const [step, setStep] = useState(0);
-  const [loaded, setLoaded] = useState(true);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -42,7 +38,7 @@ function Signup() {
     if (!strongPassword.test(form.password)) {
       return alert("Password must include 1 uppercase, 1 number, min 8 chars ❌");
     }
-      const res = await API.post("/auth/register", {
+      await API.post("/auth/register", {
         name: form.name,
         email: form.email,
         password: form.password,
@@ -80,8 +76,8 @@ function Signup() {
             {/* Stepper */}
             
             
+            
 
-            {step === 0 && (
               <>
                 <h2 className="su-form-title">Create your account</h2>
                 <p className="su-form-sub">
@@ -145,7 +141,6 @@ function Signup() {
                   Sign Up →
                 </button>
               </>
-            )}            
           </div>
         </div>
 
