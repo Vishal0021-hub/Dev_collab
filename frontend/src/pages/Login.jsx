@@ -14,12 +14,6 @@ const floatingParticles = Array.from({ length: 18 }, (_, i) => ({
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [focused, setFocused] = useState(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    setTimeout(() => setLoaded(true), 100);
-  }, []);
 
   const handleLogin = async () => {
     try {
@@ -42,7 +36,7 @@ function Login() {
 
   return (
     <>
-   
+
 
       <div className="dc-root">
         {/* ── LEFT ── */}

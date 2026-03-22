@@ -5,7 +5,7 @@ const Board = require("../models/Board");
 exports.createTask = async (req, res) => {
   try {
 
-    const { title, description, boardId } = req.body;
+    const { title, description, boardId, priority, dueDate } = req.body;
 
     const board = await Board.findById(boardId);
 
@@ -16,7 +16,9 @@ exports.createTask = async (req, res) => {
     const task = await Task.create({
       title,
       description,
-      board: boardId
+      board: boardId,
+      priority,
+      dueDate
     });
 
     res.status(201).json(task);
@@ -92,3 +94,15 @@ exports.moveTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Delete Task
+exports.deleteTask = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const task = await Task.findByIdAndDelete(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+    res.json({ message: "Task deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

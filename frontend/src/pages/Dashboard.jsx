@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+
+
+
 import "../utils/collab.css";
 
 const IconLogo = () => (
@@ -168,21 +170,9 @@ const Dashboard = () => {
       </main>
 
       {/* Create Workspace Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div
-            className="dc-overlay"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setIsModalOpen(false)}
-          >
-            <motion.div
-              className="dc-modal"
-              initial={{ opacity: 0, y: 28, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 340, damping: 26 }}
-              onClick={(e) => e.stopPropagation()}
-            >
+      {isModalOpen && (
+        <div className="dc-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="dc-modal" onClick={e => e.stopPropagation()}>
               <div className="dc-modal-icon"><IconBriefcase size={24} /></div>
               <div className="dc-modal-title">New Workspace</div>
               <p className="dc-modal-sub">Give your environment a name and start building together.</p>
@@ -199,10 +189,9 @@ const Dashboard = () => {
                   <button type="submit" className="dc-btn-submit">Create →</button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 };

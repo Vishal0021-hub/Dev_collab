@@ -28,6 +28,11 @@ const taskSchema = new mongoose.Schema(
     status: {
       type: String,
       default: "todo"
+    },
+
+    dueDate: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }

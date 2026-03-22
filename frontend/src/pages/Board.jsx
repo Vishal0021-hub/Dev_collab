@@ -1,9 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "../services/api";
-import { motion, AnimatePresence } from "framer-motion";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
 import "../utils/collab.css";
 
+/* ─── Icons ─────────────────────────────────────────────── */
 const IconLogo = () => (
   <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
     <path d="M3 6l7-3 7 3v8l-7 3-7-3V6z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -33,16 +35,22 @@ const IconSettings = () => (
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
   </svg>
 );
-const IconDots = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="5" r="1" fill="currentColor"/>
-    <circle cx="12" cy="12" r="1" fill="currentColor"/>
-    <circle cx="12" cy="19" r="1" fill="currentColor"/>
+const IconTrash = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
   </svg>
 );
-const IconClock = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+const IconEdit = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+const IconCalendar = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
   </svg>
 );
 const IconCheck = () => (
@@ -51,16 +59,40 @@ const IconCheck = () => (
   </svg>
 );
 
-const Board = () => {
-  const { projectId }               = useParams();
-  const navigate                    = useNavigate();
-  const [boards, setBoards]         = useState([]);
-  const [tasks, setTasks]           = useState([]);
-  const [project, setProject]       = useState(null);
-  const [loading, setLoading]       = useState(true);
-  const [name, setName]             = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+/* ─── Priority colours ────────────────────────────────────── */
+const PRIORITY_CONFIG = {
+  high:   { label: "High",   bg: "rgba(239,68,68,0.15)",   color: "#f87171", dot: "#ef4444" },
+  medium: { label: "Med",    bg: "rgba(245,158,11,0.15)",  color: "#fbbf24", dot: "#f59e0b" },
+  low:    { label: "Low",    bg: "rgba(16,185,129,0.15)",  color: "#34d399", dot: "#10b981" },
+};
 
+/* ─── Helper ─────────────────────────────────────────────── */
+const formatDate = (d) => {
+  if (!d) return null;
+  const dt = new Date(d);
+  return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+};
+const isOverdue = (d) => d && new Date(d) < new Date();
+
+/* ═══════════════════════════════════════════════════════════ */
+const Board = () => {
+  const { projectId }   = useParams();
+  const navigate        = useNavigate();
+
+  const [boards, setBoards]           = useState([]);
+  const [tasks,  setTasks]            = useState([]);
+  const [project, setProject]         = useState(null);
+  const [loading, setLoading]         = useState(true);
+
+  // New column modal
+  const [colName, setColName]         = useState("");
+  const [isColModal, setIsColModal]   = useState(false);
+
+  // Task modal (add / edit)
+  const [taskModal, setTaskModal]     = useState(null); // null | { mode: "add"|"edit", boardId, task? }
+  const [taskForm, setTaskForm]       = useState({ title: "", description: "", priority: "medium", dueDate: "" });
+
+  /* ── data fetchers ── */
   useEffect(() => {
     fetchProject();
     fetchBoards();
@@ -68,15 +100,9 @@ const Board = () => {
 
   const fetchProject = async () => {
     try {
-      // Assuming there's a way to get project details from either its own endpoint or matching workspace call
-      // For now, let's try to find it in the projects list of the workspace
-      // Actually, standard AI projects usually have a GET /projects/:id or similar
-      // If not, we'll just show "Project"
       const res = await API.get(`/projects/details/${projectId}`).catch(() => null);
       if (res) setProject(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch { /* silent */ }
   };
 
   const fetchBoards = async () => {
@@ -84,54 +110,99 @@ const Board = () => {
       setLoading(true);
       const res = await API.get(`/boards/${projectId}`);
       setBoards(res.data);
-      setTasks([]); // Clear tasks before refetching
-      res.data.forEach(board => {
-        fetchTasks(board._id);
-      });
+      setTasks([]);
+      res.data.forEach(b => fetchTasksFor(b._id));
     } catch (err) {
-      console.error("Error fetching boards:", err);
+      console.error("fetchBoards:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchTasks = async (boardId) => {
+  const fetchTasksFor = async (boardId) => {
     try {
       const res = await API.get(`/tasks/${boardId}`);
-      setTasks(prev => {
-        // Filter out any existing tasks for this board to avoid duplicates
-        const filtered = prev.filter(t => t.board !== boardId);
-        return [...filtered, ...res.data];
-      });
+      setTasks(prev => [...prev.filter(t => t.board !== boardId), ...res.data]);
     } catch (err) {
-      console.error(`Error fetching tasks for board ${boardId}:`, err);
+      console.error("fetchTasksFor:", err);
     }
   };
 
+  /* ── create column ── */
   const createBoard = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!colName.trim()) return;
     try {
-      await API.post("/boards", { name, projectId });
-      setName("");
-      setIsModalOpen(false);
+      await API.post("/boards", { name: colName, projectId });
+      setColName("");
+      setIsColModal(false);
       fetchBoards();
-    } catch (err) {
-      console.error("Error creating board:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  const createTask = async (boardId) => {
-    const title = prompt("Enter task title");
-    if (!title) return;
+  /* ── task CRUD ── */
+  const openAddTask = (boardId) => {
+    setTaskForm({ title: "", description: "", priority: "medium", dueDate: "" });
+    setTaskModal({ mode: "add", boardId });
+  };
+  const openEditTask = (task) => {
+    setTaskForm({
+      title:       task.title || "",
+      description: task.description || "",
+      priority:    task.priority || "medium",
+      dueDate:     task.dueDate ? task.dueDate.slice(0, 10) : "",
+    });
+    setTaskModal({ mode: "edit", boardId: task.board, task });
+  };
+
+  const submitTaskModal = async (e) => {
+    e.preventDefault();
+    const payload = {
+      title:       taskForm.title.trim(),
+      description: taskForm.description.trim(),
+      priority:    taskForm.priority,
+      dueDate:     taskForm.dueDate || null,
+    };
     try {
-      await API.post("/tasks", { title, boardId });
-      fetchTasks(boardId);
+      if (taskModal.mode === "add") {
+        await API.post("/tasks", { ...payload, boardId: taskModal.boardId });
+        fetchTasksFor(taskModal.boardId);
+      } else {
+        await API.put(`/tasks/${taskModal.task._id}`, payload);
+        fetchTasksFor(taskModal.boardId);
+      }
+      setTaskModal(null);
+    } catch (err) { console.error(err); }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!window.confirm("Delete this task?")) return;
+    try {
+      await API.delete(`/tasks/${taskId}`);
+      setTasks(prev => prev.filter(t => t._id !== taskId));
+    } catch (err) { console.error(err); }
+  };
+
+  /* ── drag & drop ── */
+  const onDragEnd = async (result) => {
+    const { source, destination, draggableId } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId) return;
+
+    // Optimistic update
+    setTasks(prev =>
+      prev.map(t => t._id === draggableId ? { ...t, board: destination.droppableId } : t)
+    );
+
+    try {
+      await API.put(`/tasks/move/${draggableId}`, { boardId: destination.droppableId });
     } catch (err) {
-      console.error("Error creating task:", err);
+      console.error("drag failed, refetching:", err);
+      fetchBoards(); // revert on failure
     }
   };
 
+  /* ─── Render ─────────────────────────────────────────────── */
   return (
     <div className="dc-page">
       <div className="dc-orb dc-orb-1" />
@@ -143,9 +214,7 @@ const Board = () => {
           <div className="dc-nav-icon"><IconLogo /></div>
           <span className="dc-nav-wordmark">DevCollab</span>
         </div>
-
         <div className="dc-nav-divider" />
-
         <div className="dc-nav-breadcrumb">
           <button onClick={() => navigate(-1)} className="dc-back-btn" style={{ width: 30, height: 30 }}>
             <IconBack />
@@ -154,192 +223,293 @@ const Board = () => {
           <span className="sep">/</span>
           <span className="bold">{project?.name || "Board"}</span>
         </div>
-
         <div className="dc-nav-right">
-          <button className="dc-nav-btn ghost" title="Settings">
-            <IconSettings />
-          </button>
+          <button className="dc-nav-btn ghost" title="Settings"><IconSettings /></button>
         </div>
       </nav>
 
       {/* Main */}
-      <main className="dc-main" style={{ maxWidth: '100vw', overflowX: 'auto' }}>
+      <main className="dc-main" style={{ maxWidth: "100%", overflowX: "auto", paddingBottom: 40 }}>
+
+        {/* Header */}
         <div className="dc-page-header">
           <div>
-            <div className="dc-eyebrow">
-              <IconCheck /> Sprint Planning
-            </div>
+            <div className="dc-eyebrow"><IconCheck /> Sprint Board</div>
             <h1 className="dc-page-title">{project?.name || "Project Board"}</h1>
-            <p className="dc-page-sub">
-              Manage tasks and track progress across boards
-            </p>
+            <p className="dc-page-sub">Drag tasks between columns · Click a task to edit</p>
           </div>
-          <button className="dc-cta" onClick={() => setIsModalOpen(true)}>
+          <button className="dc-cta" onClick={() => setIsColModal(true)}>
             <IconPlus /> Add Column
           </button>
         </div>
 
+        {/* Board columns */}
         {loading ? (
-          <div className="dc-grid" style={{ gridTemplateColumns: 'repeat(4, 300px)' }}>
-            {[1,2,3,4].map(i => (
-              <div key={i} className="dc-skeleton" style={{ height: 400, animationDelay: `${i * 110}ms` }} />
+          <div style={{ display: "flex", gap: 20 }}>
+            {[1,2,3].map(i => (
+              <div key={i} className="dc-skeleton" style={{ width: 300, height: 400, flexShrink: 0, animationDelay: `${i*110}ms` }} />
             ))}
           </div>
         ) : boards.length === 0 ? (
           <div className="dc-empty">
             <div className="dc-empty-icon-wrap"><IconBoard size={32} /></div>
-            <div className="dc-empty-title">No boards found</div>
-            <p className="dc-empty-sub">This project doesn't have any boards yet. Create one to start organizing tasks.</p>
-            <button className="dc-empty-link" onClick={() => setIsModalOpen(true)}>Create Board →</button>
+            <div className="dc-empty-title">No columns yet</div>
+            <p className="dc-empty-sub">Create your first column to start organising tasks.</p>
+            <button className="dc-empty-link" onClick={() => setIsColModal(true)}>Add Column →</button>
           </div>
         ) : (
-          <div className="dc-grid" style={{ 
-            display: 'flex', 
-            gap: '24px', 
-            alignItems: 'flex-start',
-            paddingBottom: '20px',
-            minHeight: '60vh'
-          }}>
-            {boards.map((board, idx) => (
-              <motion.div
-                key={board._id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.1, ease: "easeOut" }}
-                className="dc-card"
-                style={{ 
-                  flex: '0 0 320px', 
-                  background: 'rgba(10, 13, 20, 0.4)',
-                  backdropFilter: 'blur(10px)',
-                  padding: '20px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  maxHeight: '70vh'
-                }}
-              >
-                <div className="dc-card-top" style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div className="dc-card-icon" style={{ width: 32, height: 32 }}><IconBoard size={16} /></div>
-                    <div className="dc-card-title" style={{ fontSize: '16px', margin: 0 }}>{board.name}</div>
-                  </div>
-                  <button className="dc-card-menu-btn"><IconDots /></button>
-                </div>
-
-                <div className="dc-tasks-list" style={{ 
-                  flex: 1, 
-                  overflowY: 'auto', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '12px',
-                  paddingRight: '4px',
-                  marginBottom: '16px'
-                }}>
-                  {tasks
-                    .filter(t => t.board === board._id)
-                    .map((task) => (
-                      <motion.div
-                        key={task._id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="dc-task-item"
-                        style={{
-                          background: 'var(--surface-2)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '12px',
-                          padding: '14px',
-                          fontSize: '13px',
-                          color: 'var(--text-1)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                        whileHover={{ borderColor: 'var(--border-hover)', y: -2 }}
-                      >
-                        {task.title}
-                        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.6, fontSize: '10px' }}>
-                           <IconClock /> 
-                           Just now
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div style={{ display: "flex", gap: 20, alignItems: "flex-start", paddingBottom: 16 }}>
+              {boards.map((board) => {
+                const boardTasks = tasks.filter(t => t.board === board._id);
+                return (
+                  <div
+                    key={board._id}
+                    style={{
+                      flexShrink: 0,
+                      width: 300,
+                      background: "rgba(10,13,20,0.6)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-xl)",
+                      padding: 16,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                    }}
+                  >
+                    {/* Column header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div className="dc-card-icon" style={{ width: 28, height: 28 }}>
+                          <IconBoard size={14} />
                         </div>
-                      </motion.div>
-                    ))
-                  }
-                  
-                  {tasks.filter(t => t.board === board._id).length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3)', fontSize: '12px' }}>
-                      No tasks yet
+                        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
+                          {board.name}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 4 }}>
+                          {boardTasks.length}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => openAddTask(board._id)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, borderRadius: 6 }}
+                        title="Add task"
+                      >
+                        <IconPlus size={14} />
+                      </button>
                     </div>
-                  )}
-                </div>
 
-                <button 
-                  className="dc-empty-link" 
-                  style={{ width: '100%', marginTop: 'auto' }}
-                  onClick={() => createTask(board._id)}
-                >
-                  <IconPlus size={12} /> Add Task
-                </button>
-              </motion.div>
-            ))}
-            
-            {/* Quick add column indicator */}
-            <div 
-              onClick={() => setIsModalOpen(true)}
-              style={{
-                flex: '0 0 320px',
-                height: '100px',
-                border: '1.5px dashed var(--border)',
-                borderRadius: 'var(--radius-xl)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-3)',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-            >
-              <IconPlus /> Add Another Column
+                    {/* Droppable task list */}
+                    <Droppable droppableId={board._id}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          style={{
+                            minHeight: 60,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 10,
+                            background: snapshot.isDraggingOver ? "rgba(99,102,241,0.06)" : "transparent",
+                            borderRadius: 12,
+                            padding: snapshot.isDraggingOver ? "6px 4px" : 0,
+                            transition: "background 0.2s, padding 0.2s",
+                          }}
+                        >
+                          {boardTasks.map((task, index) => {
+                            const pCfg = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+                            const overdue = isOverdue(task.dueDate);
+                            return (
+                              <Draggable key={task._id} draggableId={task._id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    onClick={() => openEditTask(task)}
+                                    style={{
+                                      background: snapshot.isDragging ? "var(--surface-2)" : "var(--surface-2)",
+                                      border: `1px solid ${snapshot.isDragging ? "var(--border-hover)" : "var(--border)"}`,
+                                      borderRadius: 12,
+                                      padding: "12px 14px",
+                                      cursor: "grab",
+                                      boxShadow: snapshot.isDragging ? "0 16px 40px rgba(0,0,0,0.5)" : "none",
+                                      transform: snapshot.isDragging ? "rotate(2deg)" : "none",
+                                      transition: "box-shadow 0.15s, border-color 0.15s",
+                                      ...provided.draggableProps.style,
+                                    }}
+                                  >
+                                    {/* Priority badge */}
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                      <span style={{
+                                        fontSize: 10, fontWeight: 700, padding: "2px 8px",
+                                        borderRadius: 20, background: pCfg.bg, color: pCfg.color,
+                                        textTransform: "uppercase", letterSpacing: "0.08em",
+                                      }}>
+                                        <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: pCfg.dot, marginRight: 4, verticalAlign: "middle" }} />
+                                        {pCfg.label}
+                                      </span>
+                                      {/* Action buttons */}
+                                      <div style={{ display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
+                                        <button
+                                          onClick={() => openEditTask(task)}
+                                          title="Edit"
+                                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, borderRadius: 6, transition: "color 0.15s" }}
+                                          onMouseEnter={e => e.currentTarget.style.color = "var(--indigo)"}
+                                          onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}
+                                        ><IconEdit /></button>
+                                        <button
+                                          onClick={() => deleteTask(task._id)}
+                                          title="Delete"
+                                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, borderRadius: 6, transition: "color 0.15s" }}
+                                          onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                                          onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}
+                                        ><IconTrash /></button>
+                                      </div>
+                                    </div>
+
+                                    {/* Title */}
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, marginBottom: task.description ? 6 : 0 }}>
+                                      {task.title}
+                                    </div>
+
+                                    {/* Description */}
+                                    {task.description && (
+                                      <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5, marginBottom: 8 }}>
+                                        {task.description.length > 80 ? task.description.slice(0, 80) + "…" : task.description}
+                                      </div>
+                                    )}
+
+                                    {/* Due date */}
+                                    {task.dueDate && (
+                                      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: overdue ? "#f87171" : "var(--text-3)", marginTop: 8 }}>
+                                        <IconCalendar />
+                                        <span>{formatDate(task.dueDate)}</span>
+                                        {overdue && <span style={{ fontWeight: 700 }}>· Overdue</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          })}
+                          {provided.placeholder}
+
+                          {/* Empty state for column */}
+                          {boardTasks.length === 0 && !snapshot.isDraggingOver && (
+                            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-3)", fontSize: 12 }}>
+                              Drop tasks here
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Droppable>
+
+                    {/* Add task button */}
+                    <button
+                      onClick={() => openAddTask(board._id)}
+                      className="dc-empty-link"
+                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    >
+                      <IconPlus size={12} /> Add Task
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Add column ghost */}
+              <div
+                onClick={() => setIsColModal(true)}
+                style={{
+                  flexShrink: 0, width: 200, height: 80,
+                  border: "1.5px dashed var(--border)", borderRadius: "var(--radius-xl)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "var(--text-3)", cursor: "pointer", gap: 8, fontSize: 13,
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-hover)"; e.currentTarget.style.color = "var(--indigo)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)";       e.currentTarget.style.color = "var(--text-3)"; }}
+              >
+                <IconPlus size={14} /> Add Column
+              </div>
             </div>
-          </div>
+          </DragDropContext>
         )}
       </main>
 
-      {/* Create Board Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div
-            className="dc-overlay"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setIsModalOpen(false)}
-          >
-            <motion.div
-              className="dc-modal"
-              initial={{ opacity: 0, y: 28, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 340, damping: 26 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="dc-modal-icon"><IconBoard size={24} /></div>
-              <div className="dc-modal-title">New Column</div>
-              <p className="dc-modal-sub">Create a new stage for your project workflow.</p>
-              <form onSubmit={createBoard}>
-                <label className="dc-field-label">Column Name</label>
-                <input
-                  autoFocus required value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. In Progress, Quality Assurance…"
-                  className="dc-input"
-                />
-                <div className="dc-modal-actions">
-                  <button type="button" className="dc-btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                  <button type="submit" className="dc-btn-submit">Add Column</button>
+      {/* ─── Create Column Modal ────────────────────────── */}
+      {isColModal && (
+        <div className="dc-overlay" onClick={() => setIsColModal(false)}>
+          <div className="dc-modal" onClick={e => e.stopPropagation()}>
+            <div className="dc-modal-icon"><IconBoard size={24} /></div>
+            <div className="dc-modal-title">New Column</div>
+            <p className="dc-modal-sub">Add a new stage to your project workflow.</p>
+            <form onSubmit={createBoard}>
+              <label className="dc-field-label">Column name</label>
+              <input autoFocus required value={colName} onChange={e => setColName(e.target.value)} placeholder="e.g. In Progress, Review…" className="dc-input" />
+              <div className="dc-modal-actions">
+                <button type="button" className="dc-btn-cancel" onClick={() => setIsColModal(false)}>Cancel</button>
+                <button type="submit" className="dc-btn-submit">Add Column</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Add / Edit Task Modal ──────────────────────── */}
+      {taskModal && (
+        <div className="dc-overlay" onClick={() => setTaskModal(null)}>
+          <div className="dc-modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
+            <div className="dc-modal-icon"><IconEdit /></div>
+            <div className="dc-modal-title">{taskModal.mode === "add" ? "New Task" : "Edit Task"}</div>
+            <form onSubmit={submitTaskModal}>
+              <label className="dc-field-label">Title</label>
+              <input autoFocus required value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="Task title…" className="dc-input" />
+
+              <label className="dc-field-label">Description</label>
+              <textarea
+                value={taskForm.description}
+                onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Optional description…"
+                className="dc-input"
+                rows={3}
+                style={{ resize: "vertical", fontFamily: "var(--font-body)" }}
+              />
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 4 }}>
+                <div>
+                  <label className="dc-field-label">Priority</label>
+                  <select
+                    value={taskForm.priority}
+                    onChange={e => setTaskForm(f => ({ ...f, priority: e.target.value }))}
+                    className="dc-input"
+                    style={{ marginBottom: 0 }}
+                  >
+                    <option value="low">🟢 Low</option>
+                    <option value="medium">🟡 Medium</option>
+                    <option value="high">🔴 High</option>
+                  </select>
                 </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <div>
+                  <label className="dc-field-label">Due Date</label>
+                  <input
+                    type="date"
+                    value={taskForm.dueDate}
+                    onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))}
+                    className="dc-input"
+                    style={{ marginBottom: 0, colorScheme: "dark" }}
+                  />
+                </div>
+              </div>
+
+              <div className="dc-modal-actions" style={{ marginTop: 24 }}>
+                <button type="button" className="dc-btn-cancel" onClick={() => setTaskModal(null)}>Cancel</button>
+                <button type="submit" className="dc-btn-submit">{taskModal.mode === "add" ? "Create Task" : "Save Changes"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,9 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "../services/api";
-import { motion, AnimatePresence } from "framer-motion";
+
+
+
 import "../utils/collab.css";
 const IconLogo = () => (
   <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -162,12 +164,9 @@ const Projects = () => {
           </div>
         ) : (
           <div className="dc-grid">
-            {projects.map((p, idx) => (
-              <motion.div
+            {projects.map((p) => (
+              <div
                 key={p._id}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.055, ease: "easeOut" }}
                 className="dc-card"
                 style={{ textDecoration: "none" }}
                 onClick={() => navigate(`/boards/${p._id}`)}
@@ -195,28 +194,16 @@ const Projects = () => {
                     ))}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
       </main>
 
       {/* Create Project Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div
-            className="dc-overlay"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setIsModalOpen(false)}
-          >
-            <motion.div
-              className="dc-modal"
-              initial={{ opacity: 0, y: 28, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 340, damping: 26 }}
-              onClick={(e) => e.stopPropagation()}
-            >
+      {isModalOpen && (
+        <div className="dc-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="dc-modal" onClick={e => e.stopPropagation()}>
               <div className="dc-modal-icon"><IconFolder size={24} /></div>
               <div className="dc-modal-title">New Project</div>
               <p className="dc-modal-sub">Launch a new project in the <strong style={{ color: "var(--text-2)" }}>{workspace?.name}</strong> workspace.</p>
@@ -233,10 +220,9 @@ const Projects = () => {
                   <button type="submit" className="dc-btn-submit">Launch →</button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 };
