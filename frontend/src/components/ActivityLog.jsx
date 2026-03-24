@@ -50,14 +50,13 @@ const ActivityLog = ({ workspaceId }) => {
   if (loading) return <div className="dc-skeleton" style={{ height: 200, borderRadius: 16 }} />;
 
   return (
-    <div className="dc-activity-log">
-      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 20, color: 'var(--text-2)' }}>Latest Activity</h3>
+    <div>
       <div className="dc-activity-list">
         {activities.length === 0 ? (
-          <p style={{ color: 'var(--text-3)', fontSize: 13 }}>No activities yet.</p>
+          <p style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', marginTop: 40 }}>No activities yet.</p>
         ) : (
           activities.map((a) => (
-            <div key={a._id} className="dc-activity-item">
+            <div key={a._id} className="dc-activity-item" style={{ marginBottom: 20 }}>
               <div className="dc-activity-dot" />
               <div className="dc-activity-content">
                 <div className="dc-activity-msg">{getActivityMessage(a)}</div>

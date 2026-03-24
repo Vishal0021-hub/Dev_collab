@@ -106,10 +106,10 @@ exports.changeRole = async (req, res) => {
     const { workspaceId, userId } = req.params;
     const { role } = req.body;
 
-    const workspace = await Workspace.findById(workspaceId);
+    const workspace = await Workspace.findById(workspaceId).populate("members.user");
 
     const member = workspace.members.find(
-      (m) => m.user.toString() === userId
+      (m) => m.user._id.toString() === userId
     );
 
     const oldRole = member.role;

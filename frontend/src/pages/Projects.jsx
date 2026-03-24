@@ -2,6 +2,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import ActivityLog from "../components/ActivityLog";
+import MembersSidebar from "../components/MembersSidebar";
+import InviteModal from "../components/InviteModal";
 
 
 
@@ -59,9 +61,12 @@ const Projects = () => {
   const [loading, setLoading]       = useState(true);
   const [name, setName]             = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [userRole, setUserRole]       = useState("member");
+  const [members, setMembers]         = useState([]);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -78,8 +83,19 @@ const Projects = () => {
       const userId = JSON.parse(localStorage.getItem("user") || "{}")._id;
       const member = current?.members?.find(m => m.user === userId || m.user._id === userId);
       if (member) setUserRole(member.role);
+
+      fetchMembers(workspaceId);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchMembers = async (workspaceId) => {
+    try {
+      const res = await API.get(`/workspaces/${workspaceId}/members`);
+      setMembers(res.data);
+    } catch (err) {
+      console.error("fetchMembers:", err);
     }
   };
 
@@ -145,6 +161,16 @@ const Projects = () => {
         </div>
 
         <div className="dc-nav-right">
+          <button className="dc-nav-btn ghost" onClick={() => setShowActivity(!showActivity)} title="Activity Feed">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </button>
+          <button className="dc-nav-btn ghost" onClick={() => setShowMembers(!showMembers)} title="Workspace Members">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </button>
           <button className="dc-nav-btn ghost" title="Settings">
             <IconSettings />
           </button>
@@ -230,9 +256,30 @@ const Projects = () => {
               </div>
             )}
           </div>
-          <ActivityLog workspaceId={workspaceId} />
         </div>
       </main>
+
+      {/* Members Sidebar */}
+      <div className="dc-sidebar-panel" style={{ right: showMembers ? 0 : -400 }}>
+        <MembersSidebar 
+          workspaceId={workspaceId} 
+          members={members} 
+          userRole={userRole} 
+          showMembers={showMembers}
+          onUpdate={() => fetchMembers(workspaceId)}
+          onClose={() => setShowMembers(false)}
+          onInviteOpen={() => setIsInviteModalOpen(true)}
+        />
+      </div>
+
+      {/* Activity Sidebar */}
+      <div className="dc-sidebar-panel" style={{ right: showActivity ? 0 : -400 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: '#fff' }}>Activity Feed</h3>
+          <button onClick={() => setShowActivity(false)} className="dc-nav-btn ghost">×</button>
+        </div>
+        <ActivityLog workspaceId={workspaceId} />
+      </div>
 
       {/* Create Project Modal */}
       {isModalOpen && (
@@ -260,26 +307,11 @@ const Projects = () => {
 
       {/* Invite Member Modal */}
       {isInviteModalOpen && (
-        <div className="dc-overlay" onClick={() => setIsInviteModalOpen(false)}>
-          <div className="dc-modal" onClick={e => e.stopPropagation()}>
-            <div className="dc-modal-icon"><IconLogo /></div>
-            <div className="dc-modal-title">Invite Member</div>
-            <p className="dc-modal-sub">Add someone to the <strong>{workspace?.name}</strong> workspace.</p>
-            <form onSubmit={inviteMember}>
-              <label className="dc-field-label">Email address</label>
-              <input
-                type="email" autoFocus required value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="colleague@example.com"
-                className="dc-input"
-              />
-              <div className="dc-modal-actions">
-                <button type="button" className="dc-btn-cancel" onClick={() => setIsInviteModalOpen(false)}>Cancel</button>
-                <button type="submit" className="dc-btn-submit">Send Invite →</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <InviteModal 
+          workspaceId={workspaceId} 
+          onClose={() => setIsInviteModalOpen(false)}
+          onInviteSent={() => fetchMembers(workspaceId)}
+        />
       )}
     </div>
   );

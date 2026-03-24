@@ -4,6 +4,9 @@ import API from "../services/api";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 import "../utils/collab.css";
+import MembersSidebar from "../components/MembersSidebar";
+import InviteModal from "../components/InviteModal";
+import ActivityLog from "../components/ActivityLog";
 
 /* ─── Icons ─────────────────────────────────────────────── */
 const IconLogo = () => (
@@ -89,6 +92,9 @@ const Board = () => {
   // New column modal
   const [colName, setColName]         = useState("");
   const [isColModal, setIsColModal]   = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showInvite, setShowInvite]   = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   // Task modal (add / edit)
   const [taskModal, setTaskModal]     = useState(null); // null | { mode: "add"|"edit", boardId, task? }
@@ -247,6 +253,16 @@ const Board = () => {
           <span className="bold">{project?.name || "Board"}</span>
         </div>
         <div className="dc-nav-right">
+          <button className="dc-nav-btn ghost" onClick={() => setShowActivity(!showActivity)} title="Activity Feed">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </button>
+          <button className="dc-nav-btn ghost" onClick={() => setShowMembers(!showMembers)} title="Workspace Members">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </button>
           <button className="dc-nav-btn ghost" title="Settings"><IconSettings /></button>
         </div>
       </nav>
@@ -444,8 +460,8 @@ const Board = () => {
                     {/* Add task button */}
                     <button
                       onClick={() => openAddTask(board._id)}
-                      className="dc-cta"
-                      style={{ width: "100%", justifyContent: "center", background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--border)', padding: '10px' }}
+                      className="dc-cta-secondary"
+                      style={{ width: "100%", justifyContent: "center", borderRadius: '12px', padding: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
                       <IconPlus size={14} /> Add Task
                     </button>
@@ -541,18 +557,28 @@ const Board = () => {
               {(userRole === "owner" || userRole === "admin") ? (
                 <>
                   <label className="dc-field-label">Assign To</label>
-                  <select
-                    value={taskForm.assignedTo}
-                    onChange={e => setTaskForm(f => ({ ...f, assignedTo: e.target.value }))}
-                    className="dc-input"
-                  >
-                    <option value="">Unassigned</option>
+                  <div className="dc-assign-grid">
+                    <button 
+                      type="button"
+                      className={`dc-assign-btn ${!taskForm.assignedTo ? 'active' : ''}`}
+                      onClick={() => setTaskForm(f => ({ ...f, assignedTo: "" }))}
+                    >
+                      Unassigned
+                    </button>
                     {members.map(m => (
-                      <option key={m.user._id} value={m.user._id}>
-                        {m.user.name} ({m.role})
-                      </option>
+                      <button
+                        key={m.user._id}
+                        type="button"
+                        className={`dc-assign-btn ${taskForm.assignedTo === m.user._id ? 'active' : ''}`}
+                        onClick={() => setTaskForm(f => ({ ...f, assignedTo: m.user._id }))}
+                      >
+                        <div className="dc-mini-avatar" style={{ width: 20, height: 20, fontSize: 10 }}>
+                          {m.user.name[0].toUpperCase()}
+                        </div>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.user.name}</span>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </>
               ) : (
                 taskForm.assignedTo && (
@@ -572,6 +598,36 @@ const Board = () => {
             </form>
           </div>
         </div>
+      )}
+      {/* Members Sidebar */}
+      <div className="dc-sidebar-panel" style={{ right: showMembers ? 0 : -400 }}>
+        <MembersSidebar 
+          workspaceId={project?.workspace} 
+          members={members} 
+          userRole={userRole} 
+          showMembers={showMembers}
+          onUpdate={() => fetchMembers(project.workspace)}
+          onClose={() => setShowMembers(false)}
+          onInviteOpen={() => setShowInvite(true)}
+        />
+      </div>
+
+      {/* Activity Sidebar */}
+      <div className="dc-sidebar-panel" style={{ right: showActivity ? 0 : -400 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: '#fff' }}>Activity Feed</h3>
+          <button onClick={() => setShowActivity(false)} className="dc-nav-btn ghost">×</button>
+        </div>
+        <ActivityLog workspaceId={project?.workspace} />
+      </div>
+
+      {/* Invite Modal */}
+      {showInvite && (
+        <InviteModal 
+          workspaceId={project?.workspace} 
+          onClose={() => setShowInvite(false)}
+          onInviteSent={() => fetchMembers(project.workspace)}
+        />
       )}
     </div>
   );

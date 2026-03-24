@@ -9,7 +9,7 @@ exports.createTask = async (req, res) => {
 
     const { title, description, boardId, priority, dueDate } = req.body;
 
-    const board = await Board.findById(boardId);
+    const board = await Board.findById(boardId).populate('project');
 
     if (!board) {
       return res.status(404).json({ message: "Board not found" });
@@ -23,10 +23,11 @@ exports.createTask = async (req, res) => {
       dueDate
     });
 
-    // Log Activity
-    await logActivity(board.project.workspace || board.project, req.user._id, "task_created", {
+    // Log Activity - Ensure we have the workspace ID
+    const workspaceId = board.project?.workspace || board.project?._id; 
+    await logActivity(workspaceId, req.user._id, "task_created", {
       taskTitle: title,
-      projectName: board.project.name
+      projectName: board.project?.name || "Project"
     });
 
     res.status(201).json(task);
