@@ -1,5 +1,6 @@
 const Project = require("../models/Project");
 const Workspace = require("../models/workspace");
+const { logActivity } = require("../utils/activityLogger");
 
 // Create Project
 exports.createProject = async (req, res) => {
@@ -27,6 +28,10 @@ exports.createProject = async (req, res) => {
       name,
       workspace: workspaceId,
       createdBy: req.user._id
+    });
+
+    await logActivity(workspaceId, req.user._id, "project_created", {
+        projectName: name
     });
 
     res.status(201).json(project);

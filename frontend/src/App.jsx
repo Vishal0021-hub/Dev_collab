@@ -5,9 +5,12 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Board from "./pages/Board";
 import Home from "./pages/Home";
+import CustomCursor from "./components/CustomCursor";
+
 function App() {
   return (
     <BrowserRouter>
+      <CustomCursor />
       <Routes>
         <Route path="/" element={<Home/>} />
         <Route path="/login" element={<Login />} />

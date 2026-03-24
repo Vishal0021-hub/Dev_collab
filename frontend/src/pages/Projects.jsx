@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "../services/api";
+import ActivityLog from "../components/ActivityLog";
 
 
 
@@ -58,6 +59,9 @@ const Projects = () => {
   const [loading, setLoading]       = useState(true);
   const [name, setName]             = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [userRole, setUserRole]       = useState("member");
 
   useEffect(() => {
     fetchProjects();
@@ -69,6 +73,11 @@ const Projects = () => {
       const res = await API.get("/workspaces");
       const current = res.data.find(w => w._id === workspaceId);
       setWorkspace(current);
+
+      // Determine user role
+      const userId = JSON.parse(localStorage.getItem("user") || "{}")._id;
+      const member = current?.members?.find(m => m.user === userId || m.user._id === userId);
+      if (member) setUserRole(member.role);
     } catch (err) {
       console.error(err);
     }
@@ -99,10 +108,23 @@ const Projects = () => {
     }
   };
 
+  const inviteMember = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    try {
+      await API.post(`/workspaces/${workspaceId}/invite`, { email: inviteEmail });
+      setInviteEmail("");
+      setIsInviteModalOpen(false);
+      alert("Invitation sent!");
+      fetchWorkspace();
+    } catch (err) {
+      alert(err.response?.data?.message || "Error inviting member");
+    }
+  };
+
   return (
     <div className="dc-page">
-      <div className="dc-orb dc-orb-1" />
-      <div className="dc-orb dc-orb-2" />
+      {/* Aurora background handled by dc-page::before */}
 
       {/* Navbar */}
       <nav className="dc-nav">
@@ -114,7 +136,7 @@ const Projects = () => {
         <div className="dc-nav-divider" />
 
         <div className="dc-nav-breadcrumb">
-          <Link to="/dashboard" className="dc-back-btn" style={{ width: 30, height: 30 }}>
+          <Link to="/dashboard" className="dc-nav-btn ghost" style={{ width: 34, height: 34, marginRight: 8 }}>
             <IconBack />
           </Link>
           <span className="dim">Workspaces</span>
@@ -142,62 +164,74 @@ const Projects = () => {
               {projects.length} project{projects.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <button className="dc-cta" onClick={() => setIsModalOpen(true)}>
-            <IconPlus /> Create Project
-          </button>
+          <div style={{ display: "flex", gap: 12 }}>
+            {(userRole === "owner" || userRole === "admin") && (
+              <button className="dc-nav-btn" onClick={() => setIsInviteModalOpen(true)} title="Invite Member">
+                <IconPlus size={14} /> Invite
+              </button>
+            )}
+            <button className="dc-cta" onClick={() => setIsModalOpen(true)}>
+              <IconPlus /> Create Project
+            </button>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="dc-grid">
-            {[1,2,3].map(i => (
-              <div key={i} className="dc-skeleton" style={{ height: 180, animationDelay: `${i * 110}ms` }} />
-            ))}
-          </div>
-        ) : projects.length === 0 ? (
-          <div className="dc-grid">
-            <div className="dc-empty">
-              <div className="dc-empty-icon-wrap"><IconFolder size={32} /></div>
-              <div className="dc-empty-title">No projects found</div>
-              <p className="dc-empty-sub">This workspace is empty. Create a project to start tracking tasks and collaborating.</p>
-              <button className="dc-empty-link" onClick={() => setIsModalOpen(true)}>Add Project →</button>
-            </div>
-          </div>
-        ) : (
-          <div className="dc-grid">
-            {projects.map((p) => (
-              <div
-                key={p._id}
-                className="dc-card"
-                style={{ textDecoration: "none" }}
-                onClick={() => navigate(`/boards/${p._id}`)}
-              >
-                <div className="dc-card-glow" />
-
-                <div className="dc-card-top">
-                  <div className="dc-card-icon"><IconFolder /></div>
-                  <button className="dc-card-menu-btn"><IconDots /></button>
-                </div>
-
-                <div className="dc-card-title">{p.name}</div>
-
-                <div className="dc-card-footer">
-                  <div className="dc-card-time">
-                    <IconClock />
-                    Updated 2d ago
-                  </div>
-                  <div className="dc-mini-avatars">
-                    {["A", "B"].map((l, i) => (
-                      <div key={i} className="dc-mini-avatar"
-                        style={{ background: i === 0 ? "rgba(99,102,241,0.25)" : "rgba(139,92,246,0.2)" }}>
-                        {l}
-                      </div>
-                    ))}
-                  </div>
+        <div className="dc-page-main-layout">
+          <div>
+            {loading ? (
+              <div className="dc-grid">
+                {[1,2,3].map(i => (
+                  <div key={i} className="dc-skeleton" style={{ height: 180, animationDelay: `${i * 110}ms` }} />
+                ))}
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="dc-grid">
+                <div className="dc-empty">
+                  <div className="dc-empty-icon-wrap"><IconFolder size={32} /></div>
+                  <div className="dc-empty-title">Workspace is empty</div>
+                  <p className="dc-empty-sub">Create a project to start tracking tasks and collaborating with your team.</p>
+                  <button className="dc-cta" onClick={() => setIsModalOpen(true)} style={{ margin: '0 auto' }}>Add Project →</button>
                 </div>
               </div>
-            ))}
+            ) : (
+              <div className="dc-grid">
+                {projects.map((p) => (
+                  <div
+                    key={p._id}
+                    className="dc-card"
+                    style={{ textDecoration: "none" }}
+                    onClick={() => navigate(`/boards/${p._id}`)}
+                  >
+                    <div className="dc-card-top">
+                      <div className="dc-card-icon"><IconFolder /></div>
+                      <button className="dc-card-menu-btn" onClick={(e) => { e.stopPropagation(); /* menu logic */ }} style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'none' }}>
+                        <IconDots />
+                      </button>
+                    </div>
+
+                    <div className="dc-card-title">{p.name}</div>
+
+                    <div className="dc-card-footer">
+                      <div className="dc-card-time">
+                        <IconClock />
+                        Updated 2d ago
+                      </div>
+                      <div className="dc-mini-avatars">
+                        {["A", "B"].map((l, i) => (
+                          <div key={i} className="dc-mini-avatar"
+                            style={{ background: i === 0 ? "rgba(99,102,241,0.25)" : "rgba(139,92,246,0.2)" }}>
+                            {l}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+          <ActivityLog workspaceId={workspaceId} />
+        </div>
       </main>
 
       {/* Create Project Modal */}
@@ -223,6 +257,30 @@ const Projects = () => {
             </div>
           </div>
         )}
+
+      {/* Invite Member Modal */}
+      {isInviteModalOpen && (
+        <div className="dc-overlay" onClick={() => setIsInviteModalOpen(false)}>
+          <div className="dc-modal" onClick={e => e.stopPropagation()}>
+            <div className="dc-modal-icon"><IconLogo /></div>
+            <div className="dc-modal-title">Invite Member</div>
+            <p className="dc-modal-sub">Add someone to the <strong>{workspace?.name}</strong> workspace.</p>
+            <form onSubmit={inviteMember}>
+              <label className="dc-field-label">Email address</label>
+              <input
+                type="email" autoFocus required value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="colleague@example.com"
+                className="dc-input"
+              />
+              <div className="dc-modal-actions">
+                <button type="button" className="dc-btn-cancel" onClick={() => setIsInviteModalOpen(false)}>Cancel</button>
+                <button type="submit" className="dc-btn-submit">Send Invite →</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

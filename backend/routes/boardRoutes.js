@@ -6,7 +6,7 @@ const {
   getBoards
 } = require("../controllers/boardController");
 
-const { protect } = require("../middelware/authmiddleware");
+const { protect } = require("../middleware/authmiddleware");
 
 // create board
 router.post("/", protect, createBoard);

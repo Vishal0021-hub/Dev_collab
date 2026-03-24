@@ -56,7 +56,7 @@ function Signup() {
   };
 
   return (
-    <>
+    <div className="dc-page">
    
 
       <div className="su-root">
@@ -202,7 +202,7 @@ function Signup() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

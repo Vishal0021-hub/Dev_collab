@@ -20,7 +20,7 @@ ConnectDB();
 const authRoutes= require("./routes/authRoutes");
 app.use("/api/auth",authRoutes);
 
-const { protect } = require("./middelware/authmiddleware");
+const { protect } = require("./middleware/authmiddleware");
 
 app.get("/api/protected", protect, (req, res) => {
   res.json({
@@ -44,6 +44,9 @@ app.use("/api/boards", boardRoutes);
 const taskRoutes = require("./routes/taskRoutes");
 
 app.use("/api/tasks", taskRoutes);
+
+const activityRoutes = require("./routes/activityRoutes");
+app.use("/api/activities", activityRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

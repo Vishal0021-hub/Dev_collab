@@ -9,9 +9,10 @@
           min-height: 100vh;
           display: grid;
           grid-template-columns: 1fr 1fr;
-          background: #04050a;
-          font-family: 'DM Sans', sans-serif;
+          background: transparent;
+          font-family: var(--font-body);
           overflow: hidden;
+          position: relative; z-index: 1;
         }
 
         /* ── LEFT PANEL ── */
@@ -21,7 +22,9 @@
           flex-direction: column;
           justify-content: center;
           padding: 60px 56px;
-          background: linear-gradient(145deg, #080c1a 0%, #0b1228 50%, #060a18 100%);
+          background: rgba(255, 255, 255, 0.02);
+          backdrop-filter: var(--glass);
+          border-right: 1px solid var(--border);
           overflow: hidden;
         }
 
@@ -229,7 +232,7 @@
           justify-content: center;
           align-items: center;
           padding: 60px 56px;
-          background: #04050a;
+          background: transparent;
           position: relative;
           transition: opacity 0.7s, transform 0.7s;
           /* opacity: ${loaded ? 1 : 0};

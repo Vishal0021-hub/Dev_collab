@@ -59,8 +59,6 @@ const FEATURES = [
 /* ─── Component ────────────────────────────────────────── */
 export default function Home() {
   const canvasRef    = useRef(null);
-  const cursorRef    = useRef(null);
-  const cursorRing   = useRef(null);
   const hero3dRef    = useRef(null);
   const mousePos     = useRef({ x: 0, y: 0 });
   const targetTilt   = useRef({ x: 0, y: 0 });
@@ -237,21 +235,6 @@ export default function Home() {
     };
   }, []);
 
-  /* ── Custom cursor ── */
-  useEffect(() => {
-    const move = (e) => {
-      if (cursorRef.current) {
-        cursorRef.current.style.left = e.clientX + "px";
-        cursorRef.current.style.top  = e.clientY + "px";
-      }
-      if (cursorRing.current) {
-        cursorRing.current.style.left = e.clientX + "px";
-        cursorRing.current.style.top  = e.clientY + "px";
-      }
-    };
-    window.addEventListener("mousemove", move);
-    return () => window.removeEventListener("mousemove", move);
-  }, []);
 
   /* ── 3D hero tilt (mouse parallax) ── */
   useEffect(() => {
@@ -315,9 +298,6 @@ export default function Home() {
 
   return (
     <>
-      {/* Custom cursor */}
-      <div id="cursor"      ref={cursorRef}  />
-      <div id="cursor-ring" ref={cursorRing} />
 
       {/* Three.js canvas */}
       <canvas id="home-canvas" ref={canvasRef} />

@@ -35,7 +35,7 @@ function Login() {
 
 
   return (
-    <>
+    <div className="dc-page">
 
 
       <div className="dc-root">
@@ -223,7 +223,7 @@ function Login() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

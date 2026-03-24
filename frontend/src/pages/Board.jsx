@@ -83,6 +83,8 @@ const Board = () => {
   const [tasks,  setTasks]            = useState([]);
   const [project, setProject]         = useState(null);
   const [loading, setLoading]         = useState(true);
+  const [members, setMembers]         = useState([]);
+  const [userRole, setUserRole]       = useState("member");
 
   // New column modal
   const [colName, setColName]         = useState("");
@@ -90,7 +92,7 @@ const Board = () => {
 
   // Task modal (add / edit)
   const [taskModal, setTaskModal]     = useState(null); // null | { mode: "add"|"edit", boardId, task? }
-  const [taskForm, setTaskForm]       = useState({ title: "", description: "", priority: "medium", dueDate: "" });
+  const [taskForm, setTaskForm]       = useState({ title: "", description: "", priority: "medium", dueDate: "", assignedTo: "" });
 
   /* ── data fetchers ── */
   useEffect(() => {
@@ -101,8 +103,25 @@ const Board = () => {
   const fetchProject = async () => {
     try {
       const res = await API.get(`/projects/details/${projectId}`).catch(() => null);
-      if (res) setProject(res.data);
+      if (res) {
+        setProject(res.data);
+        if (res.data.workspace) fetchMembers(res.data.workspace);
+      }
     } catch { /* silent */ }
+  };
+
+  const fetchMembers = async (workspaceId) => {
+    try {
+      const res = await API.get(`/workspaces/${workspaceId}/members`);
+      setMembers(res.data);
+
+      // Determine current user role
+      const userId = JSON.parse(localStorage.getItem("user") || "{}")._id;
+      const member = res.data.find(m => m.user === userId || m.user._id === userId);
+      if (member) setUserRole(member.role);
+    } catch (err) {
+      console.error("fetchMembers:", err);
+    }
   };
 
   const fetchBoards = async () => {
@@ -142,7 +161,7 @@ const Board = () => {
 
   /* ── task CRUD ── */
   const openAddTask = (boardId) => {
-    setTaskForm({ title: "", description: "", priority: "medium", dueDate: "" });
+    setTaskForm({ title: "", description: "", priority: "medium", dueDate: "", assignedTo: "" });
     setTaskModal({ mode: "add", boardId });
   };
   const openEditTask = (task) => {
@@ -151,6 +170,7 @@ const Board = () => {
       description: task.description || "",
       priority:    task.priority || "medium",
       dueDate:     task.dueDate ? task.dueDate.slice(0, 10) : "",
+      assignedTo:  task.assignedTo || "",
     });
     setTaskModal({ mode: "edit", boardId: task.board, task });
   };
@@ -165,10 +185,14 @@ const Board = () => {
     };
     try {
       if (taskModal.mode === "add") {
-        await API.post("/tasks", { ...payload, boardId: taskModal.boardId });
+        const res = await API.post("/tasks", { ...payload, boardId: taskModal.boardId });
+        if (taskForm.assignedTo) {
+          await API.put(`/tasks/${res.data._id}/assign`, { userId: taskForm.assignedTo });
+        }
         fetchTasksFor(taskModal.boardId);
       } else {
         await API.put(`/tasks/${taskModal.task._id}`, payload);
+        await API.put(`/tasks/${taskModal.task._id}/assign`, { userId: taskForm.assignedTo || null });
         fetchTasksFor(taskModal.boardId);
       }
       setTaskModal(null);
@@ -205,8 +229,7 @@ const Board = () => {
   /* ─── Render ─────────────────────────────────────────────── */
   return (
     <div className="dc-page">
-      <div className="dc-orb dc-orb-1" />
-      <div className="dc-orb dc-orb-2" />
+      {/* Aurora background handled by dc-page::before */}
 
       {/* Navbar */}
       <nav className="dc-nav">
@@ -216,7 +239,7 @@ const Board = () => {
         </div>
         <div className="dc-nav-divider" />
         <div className="dc-nav-breadcrumb">
-          <button onClick={() => navigate(-1)} className="dc-back-btn" style={{ width: 30, height: 30 }}>
+          <button onClick={() => navigate(-1)} className="dc-nav-btn ghost" style={{ width: 34, height: 34, marginRight: 8 }}>
             <IconBack />
           </button>
           <span className="dim">Projects</span>
@@ -278,21 +301,22 @@ const Board = () => {
                     }}
                   >
                     {/* Column header */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div className="dc-card-icon" style={{ width: 28, height: 28 }}>
-                          <IconBoard size={14} />
+                    <div className="dc-column-header">
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div className="dc-card-icon" style={{ width: 32, height: 32, marginBottom: 0 }}>
+                          <IconBoard size={16} />
                         </div>
-                        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
+                        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "#fff" }}>
                           {board.name}
                         </span>
-                        <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 4 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: 4 }}>
                           {boardTasks.length}
                         </span>
                       </div>
                       <button
                         onClick={() => openAddTask(board._id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, borderRadius: 6 }}
+                        className="dc-nav-btn ghost"
+                        style={{ width: 30, height: 30 }}
                         title="Add task"
                       >
                         <IconPlus size={14} />
@@ -358,13 +382,15 @@ const Board = () => {
                                           onMouseEnter={e => e.currentTarget.style.color = "var(--indigo)"}
                                           onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}
                                         ><IconEdit /></button>
-                                        <button
-                                          onClick={() => deleteTask(task._id)}
-                                          title="Delete"
-                                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, borderRadius: 6, transition: "color 0.15s" }}
-                                          onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                                          onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}
-                                        ><IconTrash /></button>
+                                        {(userRole === "owner" || userRole === "admin") && (
+                                          <button
+                                            onClick={() => deleteTask(task._id)}
+                                            title="Delete"
+                                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, borderRadius: 6, transition: "color 0.15s" }}
+                                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                                            onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}
+                                          ><IconTrash /></button>
+                                        )}
                                       </div>
                                     </div>
 
@@ -372,6 +398,16 @@ const Board = () => {
                                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, marginBottom: task.description ? 6 : 0 }}>
                                       {task.title}
                                     </div>
+
+                                    {/* Assigned To */}
+                                    {task.assignedTo && (
+                                      <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 0" }}>
+                                        <div className="dc-mini-avatar" title={task.assignedTo.name} style={{ width: 18, height: 18, fontSize: 9 }}>
+                                          {task.assignedTo.name[0].toUpperCase()}
+                                        </div>
+                                        <span style={{ fontSize: 11, color: "var(--text-2)" }}>{task.assignedTo.name}</span>
+                                      </div>
+                                    )}
 
                                     {/* Description */}
                                     {task.description && (
@@ -408,10 +444,10 @@ const Board = () => {
                     {/* Add task button */}
                     <button
                       onClick={() => openAddTask(board._id)}
-                      className="dc-empty-link"
-                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                      className="dc-cta"
+                      style={{ width: "100%", justifyContent: "center", background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--border)', padding: '10px' }}
                     >
-                      <IconPlus size={12} /> Add Task
+                      <IconPlus size={14} /> Add Task
                     </button>
                   </div>
                 );
@@ -501,6 +537,33 @@ const Board = () => {
                   />
                 </div>
               </div>
+
+              {(userRole === "owner" || userRole === "admin") ? (
+                <>
+                  <label className="dc-field-label">Assign To</label>
+                  <select
+                    value={taskForm.assignedTo}
+                    onChange={e => setTaskForm(f => ({ ...f, assignedTo: e.target.value }))}
+                    className="dc-input"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map(m => (
+                      <option key={m.user._id} value={m.user._id}>
+                        {m.user.name} ({m.role})
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                taskForm.assignedTo && (
+                  <div style={{ marginTop: 16 }}>
+                    <label className="dc-field-label">Assigned To</label>
+                    <div className="dc-input" style={{ opacity: 0.7 }}>
+                      {members.find(m => m.user?._id === taskForm.assignedTo || m.user === taskForm.assignedTo)?.user?.name || "Assigned"}
+                    </div>
+                  </div>
+                )
+              )}
 
               <div className="dc-modal-actions" style={{ marginTop: 24 }}>
                 <button type="button" className="dc-btn-cancel" onClick={() => setTaskModal(null)}>Cancel</button>

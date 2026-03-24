@@ -1,5 +1,7 @@
 const Task = require("../models/Task");
 const Board = require("../models/Board");
+const User = require("../models/User");
+const { logActivity } = require("../utils/activityLogger");
 
 // Create Task
 exports.createTask = async (req, res) => {
@@ -21,6 +23,12 @@ exports.createTask = async (req, res) => {
       dueDate
     });
 
+    // Log Activity
+    await logActivity(board.project.workspace || board.project, req.user._id, "task_created", {
+      taskTitle: title,
+      projectName: board.project.name
+    });
+
     res.status(201).json(task);
 
   } catch (error) {
@@ -34,7 +42,7 @@ exports.getTasks = async (req, res) => {
 
     const { boardId } = req.params;
 
-    const tasks = await Task.find({ board: boardId });
+    const tasks = await Task.find({ board: boardId }).populate("assignedTo", "name email avatar");
 
     res.json(tasks);
 
@@ -81,9 +89,17 @@ exports.moveTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    task.board = boardId;
+    const oldBoard = await Board.findById(task.board);
+    const newBoard = await Board.findById(boardId).populate('project');
 
+    task.board = boardId;
     await task.save();
+
+    await logActivity(newBoard.project.workspace, req.user._id, "task_moved", {
+        taskTitle: task.title,
+        fromBoard: oldBoard.name,
+        toBoard: newBoard.name
+    });
 
     res.json({
       message: "Task moved successfully",
@@ -99,10 +115,46 @@ exports.moveTask = async (req, res) => {
 exports.deleteTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const task = await Task.findByIdAndDelete(taskId);
+    const task = await Task.findById(taskId).populate({ path: 'board', populate: { path: 'project' } });
     if (!task) return res.status(404).json({ message: "Task not found" });
+
+    const workspaceId = task.board.project.workspace;
+    const taskTitle = task.title;
+
+    await Task.findByIdAndDelete(taskId);
+
+    await logActivity(workspaceId, req.user._id, "task_deleted", {
+        taskTitle
+    });
+
     res.json({ message: "Task deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};
+};
+
+exports.assignTask = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { userId } = req.body;
+
+    const task = await Task.findById(taskId);
+
+    task.assignedTo = userId || null;
+    await task.save();
+
+    if (userId) {
+        const assignedUser = await User.findById(userId);
+        const board = await Board.findById(task.board).populate('project');
+        await logActivity(board.project.workspace, req.user._id, "task_assigned", {
+            taskTitle: task.title,
+            assignedToName: assignedUser.name
+        });
+    }
+
+    res.json({ message: "Task assigned", task });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

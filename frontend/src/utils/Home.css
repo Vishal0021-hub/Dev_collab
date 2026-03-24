@@ -2,21 +2,21 @@
 
 /* ─── Tokens ──────────────────────────────────────────── */
 :root {
-  --bg:         #020407;
-  --surface:    #080c12;
-  --surface-2:  #0e1420;
-  --border:     rgba(255,255,255,0.06);
-  --indigo:     #5b5ef4;
-  --violet:     #8857e9;
-  --cyan:       #22d3ee;
-  --glow-i:     rgba(91,94,244,0.28);
-  --glow-v:     rgba(136,87,233,0.22);
-  --text-1:     #f0f4ff;
-  --text-2:     #7c8fad;
-  --text-3:     #2e3a4e;
-  --font-d:     'Syne',    sans-serif;
-  --font-b:     'Figtree', sans-serif;
-  --font-m:     'DM Mono', monospace;
+  --bg:         #05070a;
+  --surface:    rgba(10,13,20,0.6);
+  --surface-2:  rgba(255,255,255,0.03);
+  --border:     rgba(99,102,241,0.15);
+  --indigo:     #6366f1;
+  --violet:     #8b5cf6;
+  --cyan:       #0ea5e9;
+  --glow-i:     rgba(99,102,241,0.3);
+  --glow-v:     rgba(139,92,246,0.25);
+  --text-1:     #ffffff;
+  --text-2:     #94a3b8;
+  --text-3:     #475569;
+  --font-d:     'Syne', sans-serif;
+  --font-b:     'Inter', sans-serif;
+  --font-m:     'JetBrains Mono', monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

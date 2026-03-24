@@ -6,24 +6,29 @@ const {
   getTasks,
   updateTask,
   moveTask,
-  deleteTask
+  deleteTask,
+  assignTask,
 } = require("../controllers/taskController");
 
-const { protect } = require("../middelware/authmiddleware");
+const { protect } = require("../middleware/authmiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
 
-// create task
-router.post("/", protect, createTask);
+// create task - Owner, Admin, Member can create
+router.post("/", protect, authorize(["owner", "admin", "member"]), createTask);
 
-// get tasks
-router.get("/:boardId", protect, getTasks);
+// get tasks - Any member can view
+router.get("/:boardId", protect, authorize(["owner", "admin", "member"]), getTasks);
 
-// update task
-router.put("/:taskId", protect, updateTask);
+// update task - Owner, Admin, Member can update
+router.put("/:taskId", protect, authorize(["owner", "admin", "member"]), updateTask);
 
-// move task
-router.put("/move/:taskId", protect, moveTask);
+// move task - Owner, Admin, Member can move
+router.put("/move/:taskId", protect, authorize(["owner", "admin", "member"]), moveTask);
 
-// delete task
-router.delete("/:taskId", protect, deleteTask);
+// delete task - Only Owner and Admin
+router.delete("/:taskId", protect, authorize(["owner", "admin"]), deleteTask);
+
+// assign task - Only Owner and Admin
+router.put("/:taskId/assign", protect, authorize(["owner", "admin"]), assignTask);
 
 module.exports = router;

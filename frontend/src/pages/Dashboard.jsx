@@ -86,8 +86,7 @@ const Dashboard = () => {
 
   return (
     <div className="dc-page">
-      <div className="dc-orb dc-orb-1" />
-      <div className="dc-orb dc-orb-2" />
+      {/* Navbar handled by dc-page::before for aurora */}
 
       {/* Navbar */}
       <nav className="dc-nav">
@@ -137,19 +136,17 @@ const Dashboard = () => {
           <div className="dc-grid">
             <div className="dc-empty">
               <div className="dc-empty-icon-wrap"><IconBriefcase size={32} /></div>
-              <div className="dc-empty-title">No workspaces yet</div>
-              <p className="dc-empty-sub">Create your first workspace to start collaborating with your team in real-time.</p>
-              <button className="dc-empty-link" onClick={() => setIsModalOpen(true)}>Get started →</button>
+              <div className="dc-empty-title">Welcome to DevCollab</div>
+              <p className="dc-empty-sub">Create your first workspace to start collaborating with your team in a premium, real-time environment.</p>
+              <button className="dc-cta" onClick={() => setIsModalOpen(true)} style={{ margin: '0 auto' }}>Get started →</button>
             </div>
           </div>
         ) : (
           <div className="dc-grid">
             {workspaces.map((ws) => (
               <Link key={ws._id} to={`/projects/${ws._id}`} className="dc-card">
-                <div className="dc-card-glow" />
                 <div className="dc-card-top">
                   <div className="dc-card-icon"><IconBriefcase /></div>
-                  <div className="dc-card-arrow"><IconChevron /></div>
                 </div>
                 <div className="dc-card-title">{ws.name}</div>
                 <div className="dc-card-meta">
