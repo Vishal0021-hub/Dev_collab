@@ -1,4 +1,6 @@
 const Workspace = require("../models/workspace");
+const User= require("../models/User");
+
 
 exports.createWorkspace = async (req, res) => {
   try {
@@ -30,4 +32,31 @@ exports.getWorkspaces = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};
+};
+
+exports.inviteToWorkspace = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const { workspaceId } = req.params;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const workspace = await Workspace.findById(workspaceId);
+
+    workspace.members.push({
+      user: user._id,
+      role: "member",
+    });
+
+    await workspace.save();
+
+    res.json({ message: "User invited", workspace });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
