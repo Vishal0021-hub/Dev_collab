@@ -35,9 +35,11 @@ exports.getWorkspaces = async (req, res) => {
   }
 };
 
+const { sendInviteEmail } = require("../utils/emailService");
+
 exports.inviteToWorkspace = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, role } = req.body;
     const { workspaceId } = req.params;
 
     // find user
@@ -68,18 +70,25 @@ exports.inviteToWorkspace = async (req, res) => {
       return res.status(400).json({ message: "User is already a member" });
     }
 
+    const inviteRole = role || "member";
+
     workspace.members.push({
       user: user._id,
-      role: "member",
+      role: inviteRole,
     });
 
     await workspace.save();
 
+    // Send invitation email
+    const inviter = await User.findById(req.user._id);
+    const emailResult = await sendInviteEmail(email, workspace.name, inviter.name, inviteRole);
+
     await logActivity(workspaceId, req.user._id, "member_invited", {
-        invitedEmail: email
+        invitedEmail: email,
+        role: inviteRole
     });
 
-    res.json({ message: "User invited", workspace });
+    res.json({ message: `User invited as ${inviteRole}`, workspace, emailSent: !!emailResult });
 
   } catch (err) {
     res.status(500).json({ message: err.message });

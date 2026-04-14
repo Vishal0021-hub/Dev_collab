@@ -3,7 +3,8 @@ const router = express.Router();
 
 const {
   createBoard,
-  getBoards
+  getBoards,
+  deleteBoard
 } = require("../controllers/boardController");
 
 const { protect } = require("../middleware/authmiddleware");
@@ -16,5 +17,8 @@ router.get("/", protect, getBoards);
 
 // get boards by project
 router.get("/:projectId", protect, getBoards);
+
+// delete board
+router.delete("/:boardId", protect, deleteBoard);
 
 module.exports = router;

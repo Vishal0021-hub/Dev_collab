@@ -11,15 +11,16 @@ const floatingParticles = Array.from({ length: 14 }, (_, i) => ({
   duration: Math.random() * 8 + 6,
 }));
 
+import { toast } from "react-hot-toast";
+
 function Signup() {
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
     confirm: "",
-    role: "",
-    team: "",
   });
+  const [focused, setFocused] = useState(null);
 
   const set = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -27,31 +28,31 @@ function Signup() {
 
   const handleSignup = async () => {
     try {
-      // ✅ basic validation
       if (form.password !== form.confirm) {
-        return alert("Passwords do not match ❌");
+        return toast.error("Passwords do not match");
       }
 
-      // ✅ strong password check
-    const strongPassword = /^(?=.*[A-Z])(?=.*[0-9]).{8,}$/;
+      const strongPassword = /^(?=.*[A-Z])(?=.*[0-9]).{8,}$/;
+      if (!strongPassword.test(form.password)) {
+        return toast.error("Password must include 1 uppercase, 1 number, min 8 chars");
+      }
 
-    if (!strongPassword.test(form.password)) {
-      return alert("Password must include 1 uppercase, 1 number, min 8 chars ❌");
-    }
+      const loadingToast = toast.loading("Creating account...");
       await API.post("/auth/register", {
         name: form.name,
         email: form.email,
         password: form.password,
       });
 
-      alert("Signup Success ✅");
+      toast.success("Account created successfully!", { id: loadingToast });
 
-      // 👉 redirect to login
-      window.location.href = "/login";
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1500);
 
     } catch (err) {
       console.log(err.response?.data);
-      alert(err.response?.data?.message || "Signup Failed ❌");
+      toast.error(err.response?.data?.message || "Signup Failed");
     }
   };
 

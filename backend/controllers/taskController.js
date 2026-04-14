@@ -6,7 +6,7 @@ const { logActivity } = require("../utils/activityLogger");
 // Create Task
 exports.createTask = async (req, res) => {
   try {
-
+    console.log("Create Task Request:", req.body);
     const { title, description, boardId, priority, dueDate } = req.body;
 
     const board = await Board.findById(boardId).populate('project');
@@ -24,11 +24,14 @@ exports.createTask = async (req, res) => {
     });
 
     // Log Activity - Ensure we have the workspace ID
-    const workspaceId = board.project?.workspace || board.project?._id; 
-    await logActivity(workspaceId, req.user._id, "task_created", {
-      taskTitle: title,
-      projectName: board.project?.name || "Project"
-    });
+    const workspaceId = board.project?.workspace?._id || board.project?.workspace || board.project?._id; 
+    
+    if (workspaceId) {
+      await logActivity(workspaceId, req.user._id, "task_created", {
+        taskTitle: title,
+        projectName: board.project?.name || "Project"
+      });
+    }
 
     res.status(201).json(task);
 

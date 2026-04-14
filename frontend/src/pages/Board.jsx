@@ -2,11 +2,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { toast } from "react-hot-toast";
 
 import "../utils/collab.css";
 import MembersSidebar from "../components/MembersSidebar";
 import InviteModal from "../components/InviteModal";
 import ActivityLog from "../components/ActivityLog";
+import AssignDropdown from "../components/AssignDropdown";
 
 /* ─── Icons ─────────────────────────────────────────────── */
 const IconLogo = () => (
@@ -130,13 +132,34 @@ const Board = () => {
     }
   };
 
+  const normalizeId = (value) => {
+    if (!value) return value;
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+      if (value._id) return value._id.toString();
+      if (typeof value.toString === "function") {
+        const result = value.toString();
+        if (result !== "[object Object]") return result;
+      }
+    }
+    return String(value);
+  };
+
   const fetchBoards = async () => {
     try {
       setLoading(true);
       const res = await API.get(`/boards/${projectId}`);
-      setBoards(res.data);
-      setTasks([]);
-      res.data.forEach(b => fetchTasksFor(b._id));
+      const boardsFromApi = res.data;
+      setBoards(boardsFromApi);
+
+      const tasksByBoard = await Promise.all(
+        boardsFromApi.map(async (board) => {
+          const taskRes = await API.get(`/tasks/${board._id}`);
+          return taskRes.data.map(task => ({ ...task, board: normalizeId(task.board) }));
+        })
+      );
+
+      setTasks(tasksByBoard.flat());
     } catch (err) {
       console.error("fetchBoards:", err);
     } finally {
@@ -146,8 +169,12 @@ const Board = () => {
 
   const fetchTasksFor = async (boardId) => {
     try {
-      const res = await API.get(`/tasks/${boardId}`);
-      setTasks(prev => [...prev.filter(t => t.board !== boardId), ...res.data]);
+      const boardIdString = normalizeId(boardId);
+      const res = await API.get(`/tasks/${boardIdString}`);
+      setTasks(prev => [
+        ...prev.filter(t => normalizeId(t.board) !== boardIdString),
+        ...res.data.map(task => ({ ...task, board: normalizeId(task.board) })),
+      ]);
     } catch (err) {
       console.error("fetchTasksFor:", err);
     }
@@ -162,6 +189,16 @@ const Board = () => {
       setColName("");
       setIsColModal(false);
       fetchBoards();
+    } catch (err) { console.error(err); }
+  };
+
+  /* ── delete column ── */
+  const deleteBoard = async (boardId) => {
+    if (!window.confirm("Delete this column and all its tasks?")) return;
+    try {
+      await API.delete(`/boards/${boardId}`);
+      setBoards(prev => prev.filter(b => normalizeId(b._id) !== normalizeId(boardId)));
+      setTasks(prev => prev.filter(t => normalizeId(t.board) !== normalizeId(boardId)));
     } catch (err) { console.error(err); }
   };
 
@@ -189,27 +226,35 @@ const Board = () => {
       priority:    taskForm.priority,
       dueDate:     taskForm.dueDate || null,
     };
+    const loadingToast = toast.loading(`${taskModal.mode === "add" ? "Creating" : "Updating"} task...`);
     try {
       if (taskModal.mode === "add") {
         const res = await API.post("/tasks", { ...payload, boardId: taskModal.boardId });
+        let newTask = res.data;
         if (taskForm.assignedTo) {
-          await API.put(`/tasks/${res.data._id}/assign`, { userId: taskForm.assignedTo });
+          await API.put(`/tasks/${newTask._id}/assign`, { userId: taskForm.assignedTo });
+          newTask = { ...newTask, assignedTo: taskForm.assignedTo };
         }
-        fetchTasksFor(taskModal.boardId);
+        setTasks(prev => [...prev, newTask]);
+        toast.success("Task created!", { id: loadingToast });
       } else {
         await API.put(`/tasks/${taskModal.task._id}`, payload);
         await API.put(`/tasks/${taskModal.task._id}/assign`, { userId: taskForm.assignedTo || null });
-        fetchTasksFor(taskModal.boardId);
+        setTasks(prev => prev.map(t => normalizeId(t._id) === normalizeId(taskModal.task._id) ? { ...t, ...payload, assignedTo: taskForm.assignedTo || null } : t));
+        toast.success("Task updated!", { id: loadingToast });
       }
       setTaskModal(null);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error(err); 
+      toast.error(err.response?.data?.message || "Failed to save task", { id: loadingToast });
+    }
   };
 
   const deleteTask = async (taskId) => {
     if (!window.confirm("Delete this task?")) return;
     try {
       await API.delete(`/tasks/${taskId}`);
-      setTasks(prev => prev.filter(t => t._id !== taskId));
+      setTasks(prev => prev.filter(t => normalizeId(t._id) !== normalizeId(taskId)));
     } catch (err) { console.error(err); }
   };
 
@@ -277,9 +322,51 @@ const Board = () => {
             <h1 className="dc-page-title">{project?.name || "Project Board"}</h1>
             <p className="dc-page-sub">Drag tasks between columns · Click a task to edit</p>
           </div>
-          <button className="dc-cta" onClick={() => setIsColModal(true)}>
-            <IconPlus /> Add Column
-          </button>
+
+          <div style={{ flex: 1, maxWidth: 400, margin: '0 40px' }}>
+             {tasks.length > 0 && (
+               <>
+                 <div className="dc-progress-stats">
+                   <div className="dc-stat-item">
+                     <div className="dc-stat-dot" style={{ background: 'var(--emerald)' }} />
+                     <span>{Math.round((tasks.filter(t => {
+                       const b = boards.find(brd => normalizeId(brd._id) === normalizeId(t.board));
+                       return b && (boards.indexOf(b) === boards.length - 1 || /done|complete/i.test(b.name));
+                     }).length / tasks.length) * 100)}% Completed</span>
+                   </div>
+                   <div className="dc-stat-item">
+                     <div className="dc-stat-dot" style={{ background: 'var(--amber)' }} />
+                     <span>{Math.round((tasks.filter(t => {
+                       const b = boards.find(brd => normalizeId(brd._id) === normalizeId(t.board));
+                       return b && /progress|working/i.test(b.name);
+                     }).length / tasks.length) * 100)}% Working</span>
+                   </div>
+                 </div>
+                 <div className="dc-progress-container">
+                    <div 
+                      className="dc-progress-segment completed" 
+                      style={{ width: `${(tasks.filter(t => {
+                        const b = boards.find(brd => normalizeId(brd._id) === normalizeId(t.board));
+                        return b && (boards.indexOf(b) === boards.length - 1 || /done|complete/i.test(b.name));
+                      }).length / tasks.length) * 100}%` }} 
+                    />
+                    <div 
+                      className="dc-progress-segment working" 
+                      style={{ width: `${(tasks.filter(t => {
+                        const b = boards.find(brd => normalizeId(brd._id) === normalizeId(t.board));
+                        return b && /progress|working/i.test(b.name);
+                      }).length / tasks.length) * 100}%` }} 
+                    />
+                 </div>
+               </>
+             )}
+          </div>
+
+          {(userRole === "owner" || userRole === "admin") && (
+            <button className="dc-cta" onClick={() => setIsColModal(true)}>
+              <IconPlus /> Add Column
+            </button>
+          )}
         </div>
 
         {/* Board columns */}
@@ -300,7 +387,8 @@ const Board = () => {
           <DragDropContext onDragEnd={onDragEnd}>
             <div style={{ display: "flex", gap: 20, alignItems: "flex-start", paddingBottom: 16 }}>
               {boards.map((board) => {
-                const boardTasks = tasks.filter(t => t.board === board._id);
+                const boardIdString = normalizeId(board._id);
+                const boardTasks = tasks.filter(t => normalizeId(t.board) === boardIdString);
                 return (
                   <div
                     key={board._id}
@@ -329,14 +417,26 @@ const Board = () => {
                           {boardTasks.length}
                         </span>
                       </div>
-                      <button
-                        onClick={() => openAddTask(board._id)}
-                        className="dc-nav-btn ghost"
-                        style={{ width: 30, height: 30 }}
-                        title="Add task"
-                      >
-                        <IconPlus size={14} />
-                      </button>
+                      {(userRole === "owner" || userRole === "admin") && (
+                        <>
+                          <button
+                            onClick={() => deleteBoard(board._id)}
+                            className="dc-nav-btn ghost"
+                            style={{ width: 30, height: 30, color: '#f87171' }}
+                            title="Delete column"
+                          >
+                            <IconTrash />
+                          </button>
+                          <button
+                            onClick={() => openAddTask(board._id)}
+                            className="dc-nav-btn ghost"
+                            style={{ width: 30, height: 30 }}
+                            title="Add task"
+                          >
+                            <IconPlus size={14} />
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     {/* Droppable task list */}
@@ -367,16 +467,11 @@ const Board = () => {
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}
                                     onClick={() => openEditTask(task)}
+                                    className={`dc-task-card ${task.priority}`}
                                     style={{
-                                      background: snapshot.isDragging ? "var(--surface-2)" : "var(--surface-2)",
-                                      border: `1px solid ${snapshot.isDragging ? "var(--border-hover)" : "var(--border)"}`,
-                                      borderRadius: 12,
-                                      padding: "12px 14px",
-                                      cursor: "grab",
-                                      boxShadow: snapshot.isDragging ? "0 16px 40px rgba(0,0,0,0.5)" : "none",
-                                      transform: snapshot.isDragging ? "rotate(2deg)" : "none",
-                                      transition: "box-shadow 0.15s, border-color 0.15s",
                                       ...provided.draggableProps.style,
+                                      boxShadow: snapshot.isDragging ? "0 16px 40px rgba(0,0,0,0.5)" : "none",
+                                      transform: snapshot.isDragging ? `${provided.draggableProps.style.transform} rotate(2deg)` : provided.draggableProps.style.transform,
                                     }}
                                   >
                                     {/* Priority badge */}
@@ -386,7 +481,6 @@ const Board = () => {
                                         borderRadius: 20, background: pCfg.bg, color: pCfg.color,
                                         textTransform: "uppercase", letterSpacing: "0.08em",
                                       }}>
-                                        <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: pCfg.dot, marginRight: 4, verticalAlign: "middle" }} />
                                         {pCfg.label}
                                       </span>
                                       {/* Action buttons */}
@@ -418,7 +512,7 @@ const Board = () => {
                                     {/* Assigned To */}
                                     {task.assignedTo && (
                                       <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 0" }}>
-                                        <div className="dc-mini-avatar" title={task.assignedTo.name} style={{ width: 18, height: 18, fontSize: 9 }}>
+                                        <div className="dc-mini-avatar" title={task.assignedTo.name} style={{ width: 18, height: 18, fontSize: 9, background: 'linear-gradient(135deg, var(--indigo), var(--violet))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700 }}>
                                           {task.assignedTo.name[0].toUpperCase()}
                                         </div>
                                         <span style={{ fontSize: 11, color: "var(--text-2)" }}>{task.assignedTo.name}</span>
@@ -470,20 +564,22 @@ const Board = () => {
               })}
 
               {/* Add column ghost */}
-              <div
-                onClick={() => setIsColModal(true)}
-                style={{
-                  flexShrink: 0, width: 200, height: 80,
-                  border: "1.5px dashed var(--border)", borderRadius: "var(--radius-xl)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "var(--text-3)", cursor: "pointer", gap: 8, fontSize: 13,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-hover)"; e.currentTarget.style.color = "var(--indigo)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)";       e.currentTarget.style.color = "var(--text-3)"; }}
-              >
-                <IconPlus size={14} /> Add Column
-              </div>
+              {(userRole === "owner" || userRole === "admin") && (
+                <div
+                  onClick={() => setIsColModal(true)}
+                  style={{
+                    flexShrink: 0, width: 200, height: 80,
+                    border: "1.5px dashed var(--border)", borderRadius: "var(--radius-xl)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--text-3)", cursor: "pointer", gap: 8, fontSize: 13,
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-hover)"; e.currentTarget.style.color = "var(--indigo)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)";       e.currentTarget.style.color = "var(--text-3)"; }}
+                >
+                  <IconPlus size={14} /> Add Column
+                </div>
+              )}
             </div>
           </DragDropContext>
         )}
@@ -557,28 +653,12 @@ const Board = () => {
               {(userRole === "owner" || userRole === "admin") ? (
                 <>
                   <label className="dc-field-label">Assign To</label>
-                  <div className="dc-assign-grid">
-                    <button 
-                      type="button"
-                      className={`dc-assign-btn ${!taskForm.assignedTo ? 'active' : ''}`}
-                      onClick={() => setTaskForm(f => ({ ...f, assignedTo: "" }))}
-                    >
-                      Unassigned
-                    </button>
-                    {members.map(m => (
-                      <button
-                        key={m.user._id}
-                        type="button"
-                        className={`dc-assign-btn ${taskForm.assignedTo === m.user._id ? 'active' : ''}`}
-                        onClick={() => setTaskForm(f => ({ ...f, assignedTo: m.user._id }))}
-                      >
-                        <div className="dc-mini-avatar" style={{ width: 20, height: 20, fontSize: 10 }}>
-                          {m.user.name[0].toUpperCase()}
-                        </div>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.user.name}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <AssignDropdown 
+                    members={members}
+                    selectedId={taskForm.assignedTo}
+                    onSelect={(userId) => setTaskForm(f => ({ ...f, assignedTo: userId }))}
+                  />
+                  <div style={{ marginBottom: 24 }} />
                 </>
               ) : (
                 taskForm.assignedTo && (
@@ -591,7 +671,7 @@ const Board = () => {
                 )
               )}
 
-              <div className="dc-modal-actions" style={{ marginTop: 24 }}>
+              <div className="dc-modal-actions">
                 <button type="button" className="dc-btn-cancel" onClick={() => setTaskModal(null)}>Cancel</button>
                 <button type="submit" className="dc-btn-submit">{taskModal.mode === "add" ? "Create Task" : "Save Changes"}</button>
               </div>

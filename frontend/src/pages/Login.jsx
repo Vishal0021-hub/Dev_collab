@@ -11,25 +11,33 @@ const floatingParticles = Array.from({ length: 18 }, (_, i) => ({
   duration: Math.random() * 8 + 6,
 }));
 
+import { toast } from "react-hot-toast";
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [focused, setFocused] = useState(null);
 
   const handleLogin = async () => {
+    const loadingToast = toast.loading("Authenticating...");
     try {
       const res = await API.post("/auth/login", {
         email,
         password,
       });
 
-      // ✅ MUST BE HERE
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
-      window.location.href = "/dashboard";
+      
+      toast.success("Welcome back!", { id: loadingToast });
+      
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 800);
 
     } catch (err) {
       console.log(err.response?.data);
-      alert(err.response?.data?.message || "Login Failed ❌");
+      toast.error(err.response?.data?.message || "Login Failed", { id: loadingToast });
     }
   };
 

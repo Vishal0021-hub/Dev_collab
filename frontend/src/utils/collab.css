@@ -347,11 +347,62 @@ body {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
   border-radius: 14px; color: #fff;
-  font-family: var(--font-body); font-size: 16px;
-  margin-bottom: 24px; outline: none;
+  font-family: var(--font-body); font-size: 15px;
+  margin-bottom: 20px; outline: none;
   transition: all 0.2s;
 }
+.dc-field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
 .dc-input:focus { border-color: var(--indigo); background: rgba(255,255,255,0.06); }
+
+.dc-btn-submit {
+  padding: 12px 24px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--indigo), var(--violet));
+  color: #fff; font-weight: 700; border: none;
+  cursor: none; transition: all 0.2s;
+  box-shadow: 0 4px 12px var(--indigo-glow);
+}
+.dc-btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--indigo-glow); }
+
+.dc-btn-cancel {
+  padding: 12px 24px; border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-2); font-weight: 600; border: 1px solid var(--border);
+  cursor: none; transition: all 0.2s;
+}
+.dc-btn-cancel:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+.dc-modal-actions {
+  display: flex; justify-content: flex-end; gap: 12px;
+  margin-top: 32px;
+}
+
+/* ─── Progress Bar ──────────────────────────────────── */
+.dc-progress-container {
+  width: 100%; height: 8px; border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  margin: 16px 0 24px; overflow: hidden;
+  display: flex;
+}
+.dc-progress-segment {
+  height: 100%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dc-progress-segment.completed { background: var(--emerald); box-shadow: 0 0 10px rgba(52,211,153,0.3); }
+.dc-progress-segment.working   { background: var(--amber); box-shadow: 0 0 10px rgba(251,191,36,0.3); }
+
+.dc-progress-stats {
+  display: flex; gap: 20px; font-size: 13px; font-weight: 600; margin-bottom: 8px;
+}
+.dc-stat-item { display: flex; align-items: center; gap: 6px; }
+.dc-stat-dot { width: 8px; height: 8px; border-radius: 50%; }
 
 /* ─── Assign Grid ───────────────────────────────────── */
 .dc-assign-grid {
@@ -415,6 +466,34 @@ body {
   display: flex; justify-content: space-between; align-items: center;
   border-bottom: 1px solid var(--border);
 }
+
+.dc-task-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: grab;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.dc-task-card:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-3);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+.dc-task-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; border-radius: 4px 0 0 4px;
+  background: var(--priority-color, var(--indigo));
+  opacity: 0.8;
+}
+
+.dc-task-card.high   { --priority-color: var(--rose); }
+.dc-task-card.medium { --priority-color: var(--amber); }
+.dc-task-card.low    { --priority-color: var(--emerald); }
 
 /* ─── Responsive ─────────────────────────────────────── */
 @media (max-width: 1024px) {

@@ -192,13 +192,15 @@ const Projects = () => {
           </div>
           <div style={{ display: "flex", gap: 12 }}>
             {(userRole === "owner" || userRole === "admin") && (
-              <button className="dc-nav-btn" onClick={() => setIsInviteModalOpen(true)} title="Invite Member">
-                <IconPlus size={14} /> Invite
-              </button>
+              <>
+                <button className="dc-nav-btn" onClick={() => setIsInviteModalOpen(true)} title="Invite Member">
+                  <IconPlus size={14} /> Invite
+                </button>
+                <button className="dc-cta" onClick={() => setIsModalOpen(true)}>
+                  <IconPlus /> Create Project
+                </button>
+              </>
             )}
-            <button className="dc-cta" onClick={() => setIsModalOpen(true)}>
-              <IconPlus /> Create Project
-            </button>
           </div>
         </div>
 

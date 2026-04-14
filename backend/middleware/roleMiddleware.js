@@ -28,9 +28,10 @@ const authorize = (allowedRoles) => {
           if (task && task.board && task.board.project) {
             workspaceId = task.board.project.workspace;
           }
-        } else if (req.params.boardId) {
-           const board = await Board.findById(req.params.boardId).populate('project');
-           if (board && board.project) workspaceId = board.project.workspace;
+        } else if (req.body.boardId || req.params.boardId) {
+          const boardId = req.body.boardId || req.params.boardId;
+          const board = await Board.findById(boardId).populate('project');
+          if (board && board.project) workspaceId = board.project.workspace;
         }
       }
 

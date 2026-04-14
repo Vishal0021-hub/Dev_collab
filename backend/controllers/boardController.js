@@ -39,3 +39,26 @@ exports.getBoards = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Delete Board
+exports.deleteBoard = async (req, res) => {
+  try {
+    const { boardId } = req.params;
+
+    const board = await Board.findById(boardId);
+    if (!board) {
+      return res.status(404).json({ message: "Board not found" });
+    }
+
+    // Delete all tasks in this board
+    const Task = require("../models/Task");
+    await Task.deleteMany({ board: boardId });
+
+    await Board.findByIdAndDelete(boardId);
+
+    res.json({ message: "Board and its tasks deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

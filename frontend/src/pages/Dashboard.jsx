@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 
 
@@ -58,6 +59,7 @@ const Dashboard = () => {
       setWorkspaces(res.data);
     } catch (err) {
       console.error("Error fetching workspaces:", err);
+      toast.error("Failed to load workspaces");
     } finally {
       setLoading(false);
     }
@@ -66,13 +68,16 @@ const Dashboard = () => {
   const createWorkspace = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
+    const loadingToast = toast.loading("Creating workspace...");
     try {
       await API.post("/workspaces", { name });
+      toast.success("Workspace created!", { id: loadingToast });
       setName("");
       setIsModalOpen(false);
       fetchWorkspaces();
     } catch (err) {
       console.error("Error creating workspace:", err);
+      toast.error(err.response?.data?.message || "Failed to create workspace", { id: loadingToast });
     }
   };
 

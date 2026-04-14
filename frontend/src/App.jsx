@@ -7,9 +7,30 @@ import Board from "./pages/Board";
 import Home from "./pages/Home";
 import CustomCursor from "./components/CustomCursor";
 
+import { Toaster } from "react-hot-toast";
+
 function App() {
   return (
     <BrowserRouter>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#0a0c14',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            fontSize: '14px',
+            fontFamily: 'Figtree, sans-serif'
+          },
+          success: {
+            iconTheme: {
+              primary: '#34d399',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       <CustomCursor />
       <Routes>
         <Route path="/" element={<Home/>} />
