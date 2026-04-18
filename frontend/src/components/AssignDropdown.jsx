@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 const AVATAR_PALETTES = [
   ["#6366f1","#4f46e5"], ["#8b5cf6","#7c3aed"], ["#06b6d4","#0891b2"],
@@ -20,7 +20,7 @@ const MiniAvatar = ({ name, index, size = 24 }) => {
   );
 };
 
-const AssignDropdown = ({ members, selectedId, onSelect }) => {
+const AssignDropdown = ({ members = [], selectedId, onSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef(null);
@@ -35,11 +35,17 @@ const AssignDropdown = ({ members, selectedId, onSelect }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedMember = members.find(m => m.user._id === selectedId || m.user === selectedId);
-  const filteredMembers = members.filter(m => 
-    m.user.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.user.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const getMemberUser = (m) => m?.userId || m?.user;
+  const selectedMember = members?.find(m => {
+    const user = getMemberUser(m);
+    return user?._id === selectedId || user === selectedId;
+  });
+  const selectedUser = selectedMember ? getMemberUser(selectedMember) : null;
+  const filteredMembers = (members || []).filter(m => {
+    const user = getMemberUser(m);
+    return user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      user?.email?.toLowerCase().includes(search.toLowerCase());
+  });
 
   return (
     <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
@@ -56,11 +62,11 @@ const AssignDropdown = ({ members, selectedId, onSelect }) => {
           boxShadow: isOpen ? "0 0 0 4px rgba(99,102,241,0.1)" : "none",
         }}
       >
-        {selectedMember ? (
+        {selectedUser ? (
           <>
-            <MiniAvatar name={selectedMember.user.name} index={members.indexOf(selectedMember)} />
+            <MiniAvatar name={selectedUser?.name} index={members.indexOf(selectedMember)} />
             <span style={{ fontSize: 14, color: "#fff", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {selectedMember.user.name}
+              {selectedUser?.name}
             </span>
           </>
         ) : (
@@ -119,34 +125,37 @@ const AssignDropdown = ({ members, selectedId, onSelect }) => {
               <span style={{ fontSize: 13, color: !selectedId ? "#fff" : "var(--text-3)" }}>Unassigned</span>
             </div>
 
-            {filteredMembers.map((m, idx) => (
-              <div
-                key={m.user._id}
-                onClick={() => { onSelect(m.user._id); setIsOpen(false); }}
-                style={{
-                  padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 12,
-                  background: selectedId === m.user._id ? "rgba(99,102,241,0.1)" : "transparent",
-                  transition: "all 0.2s",
-                }}
-                className="dc-dropdown-item"
-              >
-                <MiniAvatar name={m.user.name} index={idx} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.user.name}
+            {filteredMembers.map((m, idx) => {
+              const user = getMemberUser(m);
+              return (
+                <div
+                  key={user?._id || user}
+                  onClick={() => { onSelect(user?._id || user); setIsOpen(false); }}
+                  style={{
+                    padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 12,
+                    background: selectedId === user?._id || selectedId === user ? "rgba(99,102,241,0.1)" : "transparent",
+                    transition: "all 0.2s",
+                  }}
+                  className="dc-dropdown-item"
+                >
+                  <MiniAvatar name={user?.name} index={idx} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {user?.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {user?.email}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.user.email}
-                  </div>
+                  {(selectedId === user?._id || selectedId === user) && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  )}
                 </div>
-                {selectedId === m.user._id && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                )}
-              </div>
-            ))}
+              );
+            })}
 
             {filteredMembers.length === 0 && (
               <div style={{ padding: "20px", textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>
@@ -157,7 +166,7 @@ const AssignDropdown = ({ members, selectedId, onSelect }) => {
         </div>
       )}
 
-      <style>{`
+      {/* <style>{`
         @keyframes dropdownIn {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -165,7 +174,7 @@ const AssignDropdown = ({ members, selectedId, onSelect }) => {
         .dc-dropdown-item:hover {
           background: rgba(255,255,255,0.05) !important;
         }
-      `}</style>
+      `}</style> */}
     </div>
   );
 };

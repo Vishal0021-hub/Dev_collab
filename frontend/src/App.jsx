@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Board from "./pages/Board";
 import Home from "./pages/Home";
+import JoinPage from "./pages/JoinPage";
 import CustomCursor from "./components/CustomCursor";
 
 import { Toaster } from "react-hot-toast";
@@ -36,6 +37,7 @@ function App() {
         <Route path="/" element={<Home/>} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/join/:token" element={<JoinPage />} />
         <Route path="/dashboard" element={<Dashboard/>}/>
         <Route path="/projects/:workspaceId" element={<Projects />} />
         <Route path="/boards/:projectId" element={<Board />} />

@@ -61,7 +61,6 @@ const Projects = () => {
   const [loading, setLoading]       = useState(true);
   const [name, setName]             = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
   const [userRole, setUserRole]       = useState("member");
   const [members, setMembers]         = useState([]);
   const [showMembers, setShowMembers] = useState(false);
@@ -71,6 +70,7 @@ const Projects = () => {
   useEffect(() => {
     fetchProjects();
     fetchWorkspace();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
   const fetchWorkspace = async () => {
@@ -81,7 +81,9 @@ const Projects = () => {
 
       // Determine user role
       const userId = JSON.parse(localStorage.getItem("user") || "{}")._id;
-      const member = current?.members?.find(m => m.user === userId || m.user._id === userId);
+      const member = current?.members?.find(
+        m => m.userId?.toString() === userId || m.user?._id?.toString() === userId || m.user === userId
+      );
       if (member) setUserRole(member.role);
 
       fetchMembers(workspaceId);
@@ -121,20 +123,6 @@ const Projects = () => {
       fetchProjects();
     } catch (err) {
       console.error("Error creating project:", err);
-    }
-  };
-
-  const inviteMember = async (e) => {
-    e.preventDefault();
-    if (!inviteEmail.trim()) return;
-    try {
-      await API.post(`/workspaces/${workspaceId}/invite`, { email: inviteEmail });
-      setInviteEmail("");
-      setIsInviteModalOpen(false);
-      alert("Invitation sent!");
-      fetchWorkspace();
-    } catch (err) {
-      alert(err.response?.data?.message || "Error inviting member");
     }
   };
 

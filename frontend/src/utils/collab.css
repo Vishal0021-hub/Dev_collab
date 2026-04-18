@@ -181,11 +181,13 @@ body {
   font-weight:800;
   letter-spacing:-0.04em;
   color: #fff;
+  text-align: center;
 }
 
 .dc-page-sub {
   font-size:15px; color:var(--text-3);
   margin-top:6px; font-weight: 400;
+  text-align: center;
 }
 
 /* ─── Buttons ───────────────────────────────────────── */

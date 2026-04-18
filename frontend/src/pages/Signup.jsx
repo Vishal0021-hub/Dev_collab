@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api"
 import "../utils/signup.css"
@@ -20,7 +20,6 @@ function Signup() {
     password: "",
     confirm: "",
   });
-  const [focused, setFocused] = useState(null);
 
   const set = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));

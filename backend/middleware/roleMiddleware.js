@@ -46,7 +46,7 @@ const authorize = (allowedRoles) => {
       }
 
       const member = workspace.members.find(
-        (m) => m.user.toString() === req.user._id.toString()
+        (m) => m.userId.toString() === req.user._id.toString()
       );
 
       if (!member || !allowedRoles.includes(member.role)) {
@@ -63,4 +63,58 @@ const authorize = (allowedRoles) => {
   };
 };
 
-module.exports = { authorize };
+const isOwner = async (req, res, next) => {
+  try {
+    const workspace = await Workspace.findById(req.params.workspaceId || req.body.workspaceId);
+    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
+    const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+    if (!member || member.role !== "owner") {
+      return res.status(403).json({ message: "Only workspace owner can perform this action" });
+    }
+
+    req.workspace = workspace;
+    req.userRole = member.role;
+    next();
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const isAdmin = async (req, res, next) => {
+  try {
+    const workspace = await Workspace.findById(req.params.workspaceId || req.body.workspaceId);
+    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
+    const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+    if (!member || !["owner", "admin"].includes(member.role)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    req.workspace = workspace;
+    req.userRole = member.role;
+    next();
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const isMember = async (req, res, next) => {
+  try {
+    const workspace = await Workspace.findById(req.params.workspaceId || req.body.workspaceId);
+    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
+    const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+    if (!member) {
+      return res.status(403).json({ message: "Workspace membership required" });
+    }
+
+    req.workspace = workspace;
+    req.userRole = member.role;
+    next();
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { authorize, isOwner, isAdmin, isMember };

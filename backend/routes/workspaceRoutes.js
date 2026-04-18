@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
-const { createWorkspace, getWorkspaces, inviteToWorkspace, getWorkspaceMembers, changeRole } = require("../controllers/workspaceController");
+const { createWorkspace, getWorkspaces, inviteToWorkspace, joinWorkspace, getWorkspaceMembers, changeRole } = require("../controllers/workspaceController");
 const { protect } = require("../middleware/authmiddleware");
-const { authorize } = require("../middleware/roleMiddleware");
+const { authorize, isAdmin, isOwner } = require("../middleware/roleMiddleware");
 
 router.post("/", protect, createWorkspace);
 router.get("/", protect, getWorkspaces);
@@ -12,12 +12,15 @@ router.get("/", protect, getWorkspaces);
 router.get("/:workspaceId/members", protect, authorize(["owner", "admin", "member"]), getWorkspaceMembers);
 
 // invite - Only Owner and Admin
-router.post("/:workspaceId/invite", protect, authorize(["owner", "admin"]), inviteToWorkspace);
+router.post("/:workspaceId/invite", protect, isAdmin, inviteToWorkspace);
+
+// join workspace via invite token
+router.post("/join/:token", protect, joinWorkspace);
 
 router.put(
   "/:workspaceId/role/:userId",
   protect,
-  authorize(["owner"]),
+  isOwner,
   changeRole,
 );
 module.exports = router;

@@ -8,15 +8,15 @@ const {
 } = require("../controllers/projectController");
 
 const { protect } = require("../middleware/authmiddleware");
-const { authorize } = require("../middleware/roleMiddleware");
+const { isAdmin, isMember } = require("../middleware/roleMiddleware");
 
 // Create project - Only Owner and Admin
-router.post("/", protect, authorize(["owner", "admin"]), createProject);
+router.post("/", protect, isAdmin, createProject);
 
 // Get single project details - Any member can view
-router.get("/details/:projectId", protect, authorize(["owner", "admin", "member"]), getProjectById);
+router.get("/details/:projectId", protect, isMember, getProjectById);
 
 // Get projects by workspace - Any member can view
-router.get("/:workspaceId", protect, authorize(["owner", "admin", "member"]), getProjects);
+router.get("/:workspaceId", protect, isMember, getProjects);
 
 module.exports = router;

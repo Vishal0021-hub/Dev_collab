@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import API from "../services/api";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import '../utils/login.css'
 const floatingParticles = Array.from({ length: 18 }, (_, i) => ({
   id: i,
@@ -16,7 +16,8 @@ import { toast } from "react-hot-toast";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [focused, setFocused] = useState(null);
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/dashboard";
 
   const handleLogin = async () => {
     const loadingToast = toast.loading("Authenticating...");
@@ -32,7 +33,7 @@ function Login() {
       toast.success("Welcome back!", { id: loadingToast });
       
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        window.location.href = redirect;
       }, 800);
 
     } catch (err) {
@@ -172,8 +173,6 @@ function Login() {
                   className="dc-input"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  onFocus={() => setFocused("email")}
-                  onBlur={() => setFocused(null)}
                 />
               </div>
             </div>
@@ -191,8 +190,6 @@ function Login() {
                   className="dc-input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setFocused("password")}
-                  onBlur={() => setFocused(null)}
                 />
               </div>
               <div className="dc-forgot">

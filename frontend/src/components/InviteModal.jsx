@@ -14,16 +14,12 @@ const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
     const loadingToast = toast.loading("Sending invitation...");
     try {
       setLoading(true);
-      const res = await API.post(`/workspaces/${workspaceId}/invite`, {
+      await API.post(`/workspaces/${workspaceId}/invite`, {
         email: email.trim(),
         role,
       });
 
-      if (res.data.emailSent) {
-        toast.success(`Invitation sent to ${email}`, { id: loadingToast });
-      } else {
-        toast.success(`User invited, but email failed to send`, { id: loadingToast });
-      }
+      toast.success(`Invite sent to ${email}`, { id: loadingToast });
       onInviteSent();
       onClose();
     } catch (err) {

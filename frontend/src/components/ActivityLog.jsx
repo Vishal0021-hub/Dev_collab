@@ -9,6 +9,7 @@ const ActivityLog = ({ workspaceId }) => {
     if (workspaceId) {
       fetchActivities();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
   const fetchActivities = async () => {

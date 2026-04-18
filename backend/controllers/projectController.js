@@ -17,7 +17,7 @@ exports.createProject = async (req, res) => {
 
     // check user is member
     const isMember = workspace.members.some(
-      (member) => member.user.toString() === req.user._id.toString()
+      (member) => member.userId.toString() === req.user._id.toString()
     );
 
     if (!isMember) {

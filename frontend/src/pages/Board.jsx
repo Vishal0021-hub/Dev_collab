@@ -106,6 +106,7 @@ const Board = () => {
   useEffect(() => {
     fetchProject();
     fetchBoards();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const fetchProject = async () => {
@@ -125,7 +126,9 @@ const Board = () => {
 
       // Determine current user role
       const userId = JSON.parse(localStorage.getItem("user") || "{}")._id;
-      const member = res.data.find(m => m.user === userId || m.user._id === userId);
+      const member = res.data.find(
+        m => m.userId?.toString() === userId || m.user?._id?.toString() === userId || m.user === userId
+      );
       if (member) setUserRole(member.role);
     } catch (err) {
       console.error("fetchMembers:", err);
@@ -164,19 +167,6 @@ const Board = () => {
       console.error("fetchBoards:", err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchTasksFor = async (boardId) => {
-    try {
-      const boardIdString = normalizeId(boardId);
-      const res = await API.get(`/tasks/${boardIdString}`);
-      setTasks(prev => [
-        ...prev.filter(t => normalizeId(t.board) !== boardIdString),
-        ...res.data.map(task => ({ ...task, board: normalizeId(task.board) })),
-      ]);
-    } catch (err) {
-      console.error("fetchTasksFor:", err);
     }
   };
 
@@ -665,7 +655,7 @@ const Board = () => {
                   <div style={{ marginTop: 16 }}>
                     <label className="dc-field-label">Assigned To</label>
                     <div className="dc-input" style={{ opacity: 0.7 }}>
-                      {members.find(m => m.user?._id === taskForm.assignedTo || m.user === taskForm.assignedTo)?.user?.name || "Assigned"}
+                      {members.find(m => m.userId?._id === taskForm.assignedTo || m.userId === taskForm.assignedTo || m.user?._id === taskForm.assignedTo || m.user === taskForm.assignedTo)?.userId?.name || members.find(m => m.userId?._id === taskForm.assignedTo || m.userId === taskForm.assignedTo || m.user?._id === taskForm.assignedTo || m.user === taskForm.assignedTo)?.user?.name || "Assigned"}
                     </div>
                   </div>
                 )

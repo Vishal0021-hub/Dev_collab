@@ -7,7 +7,7 @@ const nodemailer = require("nodemailer");
  * @param {string} inviterName - The name of the person who invited them.
  * @param {string} role - The role they are invited as (Admin/Member).
  */
-const sendInviteEmail = async (to, workspaceName, inviterName, role) => {
+const sendInviteEmail = async (to, workspaceName, inviterName, role, token) => {
   try {
     // Create a transporter using environment variables
     const transporter = nodemailer.createTransport({
@@ -37,7 +37,7 @@ const sendInviteEmail = async (to, workspaceName, inviterName, role) => {
               <strong>${inviterName}</strong> has invited you to join the <strong>${workspaceName}</strong> workspace as an <strong>${role}</strong>.
             </p>
             <div style="text-align: center; margin: 40px 0;">
-              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/login" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px;">
+              <a href="${process.env.CLIENT_URL || "http://localhost:5173"}/join/${token}" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px;">
                 Accept Invitation
               </a>
             </div>

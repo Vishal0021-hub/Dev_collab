@@ -105,11 +105,13 @@ const MembersSidebar = ({ workspaceId, members, userRole, onUpdate, onClose, onI
           </div>
         ) : (
           members.map((m, idx) => {
-            const isHovered = hoveredId === m.user._id;
+            const user = m.userId || m.user;
+            const userId = user?._id || user;
+            const isHovered = hoveredId === userId;
             return (
               <div
-                key={m.user._id}
-                onMouseEnter={() => setHoveredId(m.user._id)}
+                key={userId}
+                onMouseEnter={() => setHoveredId(userId)}
                 onMouseLeave={() => setHoveredId(null)}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
@@ -120,20 +122,20 @@ const MembersSidebar = ({ workspaceId, members, userRole, onUpdate, onClose, onI
                   transition: "all 0.2s",
                 }}
               >
-                <MemberAvatar name={m.user.name} index={idx} />
+                <MemberAvatar name={user?.name} index={idx} />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontSize: 13, fontWeight: 600, color: "#fff",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
-                    {m.user.name}
+                    {user?.name}
                   </div>
                   <div style={{
                     fontSize: 11, color: "var(--text-3)", marginTop: 2,
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
-                    {m.user.email}
+                    {user?.email}
                   </div>
                 </div>
 
@@ -145,8 +147,8 @@ const MembersSidebar = ({ workspaceId, members, userRole, onUpdate, onClose, onI
                     <div style={{ position: 'relative' }}>
                       <select
                         value={m.role}
-                        disabled={updating === m.user._id}
-                        onChange={e => handleChangeRole(m.user._id, e.target.value)}
+                        disabled={updating === userId}
+                        onChange={e => handleChangeRole(userId, e.target.value)}
                         className="dc-role-select"
                         style={{
                           fontSize: 10, padding: "4px 8px",
@@ -154,7 +156,7 @@ const MembersSidebar = ({ workspaceId, members, userRole, onUpdate, onClose, onI
                           border: "1px solid var(--border)",
                           borderRadius: 8, color: "var(--text-2)",
                           cursor: "pointer", outline: "none",
-                          opacity: updating === m.user._id ? 0.5 : 1,
+                          opacity: updating === userId ? 0.5 : 1,
                           appearance: 'none',
                           paddingRight: 20
                         }}
@@ -168,7 +170,7 @@ const MembersSidebar = ({ workspaceId, members, userRole, onUpdate, onClose, onI
                     </div>
                   )}
 
-                  {updating === m.user._id && (
+                  {updating === userId && (
                     <span style={{ fontSize: 10, color: "var(--indigo)", animation: 'pulse 1.5s infinite' }}>Updating…</span>
                   )}
                 </div>
