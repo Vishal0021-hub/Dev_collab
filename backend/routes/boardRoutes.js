@@ -8,18 +8,15 @@ const {
 } = require("../controllers/boardController");
 
 const { protect } = require("../middleware/authmiddleware");
-const { isMember, isAdmin } = require("../middleware/roleMiddleware");
+const { isAdmin } = require("../middleware/roleMiddleware");
 
-// create board
+// GET boards by project — just auth, no membership check needed (data scoped by projectId)
+router.get("/:projectId", protect, getBoards);
+
+// CREATE board — admin/owner only
 router.post("/", protect, isAdmin, createBoard);
 
-// get all boards
-router.get("/", protect, isMember, getBoards);
-
-// get boards by project
-router.get("/:projectId", protect, isMember, getBoards);
-
-// delete board
+// DELETE board — admin/owner only
 router.delete("/:boardId", protect, isAdmin, deleteBoard);
 
 module.exports = router;

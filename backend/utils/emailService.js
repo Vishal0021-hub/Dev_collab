@@ -1,68 +1,120 @@
 const nodemailer = require("nodemailer");
 
-/**
- * Send an invitation email to a user.
- * @param {string} to - The recipient's email address.
- * @param {string} workspaceName - The name of the workspace they are invited to.
- * @param {string} inviterName - The name of the person who invited them.
- * @param {string} role - The role they are invited as (Admin/Member).
- */
-const sendInviteEmail = async (to, workspaceName, inviterName, role, token) => {
-  try {
-    // Create a transporter using environment variables
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.ethereal.email",
-      port: process.env.SMTP_PORT || 587,
-      auth: {
-        user: process.env.SMTP_USER || "placeholder@example.com",
-        pass: process.env.SMTP_PASS || "password",
-      },
-    });
-
-    const mailOptions = {
-      from: `"DevCollab" <${process.env.SMTP_FROM || "no-reply@devcollab.com"}>`,
-      to,
-      subject: `Invitation to join ${workspaceName} on DevCollab`,
-      html: `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
-          <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 30px; text-align: center;">
-            <h1 style="color: #fff; margin: 0;">DevCollab</h1>
-          </div>
-          <div style="padding: 40px; background-color: #fff;">
-            <h2 style="color: #1a1a1a; margin-top: 0;">You've been invited!</h2>
-            <p style="font-size: 16px; line-height: 1.6; color: #4b5563;">
-              Hello,
-            </p>
-            <p style="font-size: 16px; line-height: 1.6; color: #4b5563;">
-              <strong>${inviterName}</strong> has invited you to join the <strong>${workspaceName}</strong> workspace as an <strong>${role}</strong>.
-            </p>
-            <div style="text-align: center; margin: 40px 0;">
-              <a href="${process.env.CLIENT_URL || "http://localhost:5173"}/join/${token}" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px;">
-                Accept Invitation
-              </a>
-            </div>
-            <p style="font-size: 14px; line-height: 1.6; color: #9ca3af; margin-bottom: 0;">
-              If you don't have an account yet, you'll need to create one first using this email address.
-            </p>
-          </div>
-          <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #f3f4f6;">
-            <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-              &copy; 2026 DevCollab. All rights reserved.
-            </p>
-          </div>
-        </div>
-      `,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent: %s", info.messageId);
-    return info;
-  } catch (error) {
-    console.error("Error sending email:", error);
-    // We don't throw here to prevent the main process from failing, 
-    // but in a production app, you might want to log this to a monitoring service.
-    return null;
-  }
+/* ─── Transporter ──────────────────────────────────────────── */
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host:   process.env.SMTP_HOST || "smtp.gmail.com",
+    port:   parseInt(process.env.SMTP_PORT || "587"),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: { rejectUnauthorized: false },
+  });
 };
 
-module.exports = { sendInviteEmail };
+const ROLE_DESCRIPTIONS = {
+  owner:  "You'll have full control over the workspace including managing members and billing.",
+  admin:  "You'll be able to manage members, create projects, assign tasks, and access all workspace channels.",
+  member: "You'll be able to view projects, work on tasks, and collaborate with the team.",
+};
+
+const ROLE_COLORS = {
+  owner:  "#fbbf24",
+  admin:  "#818cf8",
+  member: "#94a3b8",
+};
+
+exports.sendInviteEmail = async ({ toEmail, inviterName, workspaceName, role, inviteLink }) => {
+  const transporter = createTransporter();
+  const roleColor  = ROLE_COLORS[role] || "#818cf8";
+  const roleDesc   = ROLE_DESCRIPTIONS[role] || ROLE_DESCRIPTIONS.member;
+  const roleLabel  = role.charAt(0).toUpperCase() + role.slice(1);
+  const fromName   = process.env.EMAIL_FROM_NAME || "DevSpace";
+  const fromEmail  = process.env.EMAIL_FROM || process.env.SMTP_USER;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#07090f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#07090f;min-height:100vh;">
+<tr><td align="center" style="padding:40px 16px;">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#0a0c14;border:1px solid rgba(255,255,255,0.08);border-radius:20px;overflow:hidden;max-width:520px;">
+  <tr><td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);height:4px;"></td></tr>
+  <tr><td style="padding:32px 36px 16px;">
+    <table cellpadding="0" cellspacing="0"><tr>
+      <td style="width:40px;height:40px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:10px;text-align:center;vertical-align:middle;">
+        <span style="color:#fff;font-size:20px;font-weight:800;line-height:40px;">D</span>
+      </td>
+      <td style="padding-left:12px;vertical-align:middle;">
+        <span style="font-size:22px;font-weight:800;color:#fff;">DevSpace</span>
+      </td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="padding:8px 36px 32px;">
+    <h1 style="margin:0 0 20px;font-size:22px;font-weight:800;color:#fff;">
+      You've been invited to join<br/>
+      <span style="color:#818cf8;">"${workspaceName}"</span>
+    </h1>
+    <p style="margin:0 0 20px;font-size:15px;color:rgba(255,255,255,0.7);line-height:1.6;">
+      <strong style="color:#fff;">${inviterName}</strong> has invited you to join the
+      <strong style="color:#fff;">${workspaceName}</strong> workspace on DevSpace as
+      <span style="display:inline-block;padding:2px 12px;border-radius:20px;font-size:13px;font-weight:700;background:${roleColor}22;color:${roleColor};border:1px solid ${roleColor}44;margin-left:4px;">${roleLabel}</span>.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr><td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 18px;">
+        <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:${roleColor};text-transform:uppercase;letter-spacing:0.08em;">As a ${roleLabel}</p>
+        <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.6;">${roleDesc}</p>
+      </td></tr>
+    </table>
+    <p style="margin:0 0 24px;font-size:13px;color:rgba(255,255,255,0.4);">This invite expires in <strong style="color:rgba(255,255,255,0.6);">7 days</strong>.</p>
+    <table cellpadding="0" cellspacing="0"><tr>
+      <td style="border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+        <a href="${inviteLink}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
+          Accept Invitation &rarr;
+        </a>
+      </td>
+    </tr></table>
+    <p style="margin:20px 0 0;font-size:12px;color:rgba(255,255,255,0.3);">
+      Or copy: <a href="${inviteLink}" style="color:#818cf8;word-break:break-all;">${inviteLink}</a>
+    </p>
+  </td></tr>
+  <tr><td style="padding:20px 36px;border-top:1px solid rgba(255,255,255,0.05);">
+    <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">
+      This invitation was sent from DevSpace. If you didn't expect this, you can safely ignore it.
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+  const info = await transporter.sendMail({
+    from:    `"${fromName}" <${fromEmail}>`,
+    to:      toEmail,
+    subject: `${inviterName} invited you to "${workspaceName}" on DevSpace`,
+    html,
+    text: `You've been invited to join "${workspaceName}" on DevSpace as ${roleLabel}.\n\nAccept the invitation: ${inviteLink}\n\nThis invite expires in 7 days.`,
+  });
+
+  console.log(`[email] Invite sent to ${toEmail} — messageId: ${info.messageId}`);
+  return info;
+};
+
+exports.verifySmtp = async () => {
+  if (!process.env.SMTP_USER || process.env.SMTP_USER === "your_gmail@gmail.com") {
+    console.warn("[email] SMTP not configured — invite emails disabled. Set SMTP_USER and SMTP_PASS in .env");
+    return false;
+  }
+  try {
+    const transporter = createTransporter();
+    await transporter.verify();
+    console.log(`[email] SMTP ready — connected as ${process.env.SMTP_USER}`);
+    return true;
+  } catch (err) {
+    console.error("[email] SMTP connection failed:", err.message);
+    return false;
+  }
+};

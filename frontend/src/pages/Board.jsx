@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -46,7 +46,11 @@ const isOverdue = (d) => d && new Date(d) < new Date();
 const Board = () => {
   const { projectId } = useParams();
   const navigate      = useNavigate();
+  const location      = useLocation();
   const { setActiveWorkspace, workspaces } = useWorkspace();
+
+  // workspaceId can come from navigation state (from Projects page) or from project fetch
+  const [workspaceId, setWorkspaceId] = useState(location.state?.workspaceId || null);
 
   const [boards,  setBoards]  = useState([]);
   const [tasks,   setTasks]   = useState([]);
@@ -78,24 +82,32 @@ const Board = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  // When workspaceId becomes known (from state or fetchProject), load members
+  useEffect(() => {
+    if (workspaceId) fetchMembers(workspaceId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId]);
+
   const fetchProject = async () => {
     try {
-      const res = await API.get(`/projects/details/${projectId}`).catch(() => null);
-      if (res) {
+      const res = await API.get(`/projects/details/${projectId}`);
+      if (res?.data) {
         setProject(res.data);
-        if (res.data.workspace) {
-          fetchMembers(res.data.workspace);
-          // Sync active workspace in context
-          const ws = workspaces.find(w => w._id === res.data.workspace || w._id?.toString() === res.data.workspace?.toString());
+        const wsId = res.data.workspace?._id || res.data.workspace;
+        if (wsId) {
+          if (!workspaceId) setWorkspaceId(wsId);   // set if not already from nav state
+          const ws = workspaces.find(w => w._id?.toString() === wsId?.toString());
           if (ws) setActiveWorkspace(ws);
         }
       }
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error("fetchProject:", err.response?.status, err.response?.data?.message);
+    }
   };
 
-  const fetchMembers = async (workspaceId) => {
+  const fetchMembers = async (wsId) => {
     try {
-      const res = await API.get(`/workspaces/${workspaceId}/members`);
+      const res = await API.get(`/workspaces/${wsId}/members`);
       setMembers(res.data);
       const userId = JSON.parse(localStorage.getItem("user") || "{}")._id;
       const m = res.data.find(
@@ -120,9 +132,9 @@ const Board = () => {
       const boardsFromApi = res.data;
       setBoards(boardsFromApi);
 
-      // Fetch tasks for each board independently — don't let one failure block others
+      // Fetch tasks for each board independently — Promise.allSettled prevents one failure blocking others
       const taskResults = await Promise.allSettled(
-        boardsFromApi.map(board => API.get(`/tasks/${board._id}`))
+        boardsFromApi.map(board => API.get(`/tasks/board/${board._id}`))
       );
 
       const allTasks = taskResults.flatMap((r, i) => {
@@ -544,8 +556,8 @@ const Board = () => {
         {showMembers && (
           <div style={{ position: "fixed", inset: 0, zIndex: 200 }} onClick={() => setShowMembers(false)}>
             <div style={{ position: "absolute", right: 0, top: 0, width: 380, height: "100vh", background: "rgba(10,13,22,0.98)", borderLeft: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }} onClick={e => e.stopPropagation()}>
-              <MembersSidebar workspaceId={project?.workspace} members={members} userRole={userRole} showMembers={showMembers}
-                onUpdate={() => fetchMembers(project?.workspace)} onClose={() => setShowMembers(false)} onInviteOpen={() => { setShowMembers(false); setShowInvite(true); }}/>
+        <MembersSidebar workspaceId={workspaceId} members={members} userRole={userRole} showMembers={showMembers}
+                onUpdate={() => fetchMembers(workspaceId)} onClose={() => setShowMembers(false)} onInviteOpen={() => { setShowMembers(false); setShowInvite(true); }}/>
             </div>
           </div>
         )}
@@ -557,13 +569,13 @@ const Board = () => {
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>Activity</h3>
                 <button onClick={() => setShowActivity(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.5)", fontSize: 20 }}>×</button>
               </div>
-              <ActivityLog workspaceId={project?.workspace}/>
+              <ActivityLog workspaceId={workspaceId}/>
             </div>
           </div>
         )}
 
         {showInvite && (
-          <InviteModal workspaceId={project?.workspace} onClose={() => setShowInvite(false)} onInviteSent={() => fetchMembers(project?.workspace)}/>
+          <InviteModal workspaceId={workspaceId} onClose={() => setShowInvite(false)} onInviteSent={() => fetchMembers(workspaceId)}/>
         )}
 
         {/* ── Create Column Modal ── */}

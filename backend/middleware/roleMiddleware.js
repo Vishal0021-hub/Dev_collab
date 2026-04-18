@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Workspace = require("../models/workspace");
 const Project = require("../models/Project");
 const Board = require("../models/Board");
@@ -15,23 +16,30 @@ const authorize = (allowedRoles) => {
       // If workspaceId is not in params or body, try to find it from Project, Board, or Task
       if (!workspaceId) {
         if (req.params.projectId) {
-          const project = await Project.findById(req.params.projectId);
-          if (project) workspaceId = project.workspace;
+          const projectId = req.params.projectId;
+          if (mongoose.isValidObjectId(projectId)) {
+            const project = await Project.findById(projectId);
+            if (project) workspaceId = project.workspace;
+          }
         } else if (req.params.taskId || req.body.taskId) {
           const taskId = req.params.taskId || req.body.taskId;
-          const task = await Task.findById(taskId).populate({
-            path: 'board',
-            populate: {
-              path: 'project'
+          if (mongoose.isValidObjectId(taskId)) {
+            const task = await Task.findById(taskId).populate({
+              path: 'board',
+              populate: {
+                path: 'project'
+              }
+            });
+            if (task && task.board && task.board.project) {
+              workspaceId = task.board.project.workspace;
             }
-          });
-          if (task && task.board && task.board.project) {
-            workspaceId = task.board.project.workspace;
           }
         } else if (req.body.boardId || req.params.boardId) {
           const boardId = req.body.boardId || req.params.boardId;
-          const board = await Board.findById(boardId).populate('project');
-          if (board && board.project) workspaceId = board.project.workspace;
+          if (mongoose.isValidObjectId(boardId)) {
+            const board = await Board.findById(boardId).populate('project');
+            if (board && board.project) workspaceId = board.project.workspace;
+          }
         }
       }
 
@@ -45,9 +53,11 @@ const authorize = (allowedRoles) => {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      const member = workspace.members.find(
-        (m) => m.userId.toString() === req.user._id.toString()
-      );
+      const member = workspace.members.find((m) => {
+        const userId = m?.userId;
+        if (!userId) return false;
+        return String(userId) === String(req.user._id);
+      });
 
       if (!member || !allowedRoles.includes(member.role)) {
         return res.status(403).json({ message: "Not authorized for this action" });
@@ -69,7 +79,11 @@ const isOwner = async (req, res, next) => {
     const workspace = await Workspace.findById(req.params.workspaceId || req.body.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
-    const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+    const member = workspace.members.find((m) => {
+      const userId = m?.userId;
+      if (!userId) return false;
+      return String(userId) === String(req.user._id);
+    });
     if (!member || member.role !== "owner") {
       return res.status(403).json({ message: "Only workspace owner can perform this action" });
     }
@@ -89,21 +103,30 @@ const isAdmin = async (req, res, next) => {
     // If workspaceId is not in params or body, try to find it from Project, Board, or Task
     if (!workspaceId) {
       if (req.params.projectId || req.body.projectId) {
-        const project = await Project.findById(req.params.projectId || req.body.projectId);
-        if (project) workspaceId = project.workspace;
-      } else if (req.params.boardId || req.body.boardId) {
-        const board = await Board.findById(req.params.boardId || req.body.boardId);
-        if (board) {
-          const project = await Project.findById(board.project);
+        const projectId = req.params.projectId || req.body.projectId;
+        if (mongoose.isValidObjectId(projectId)) {
+          const project = await Project.findById(projectId);
           if (project) workspaceId = project.workspace;
         }
-      } else if (req.params.taskId || req.body.taskId) {
-        const task = await Task.findById(req.params.taskId || req.body.taskId);
-        if (task) {
-          const board = await Board.findById(task.board);
-          if (board) {
+      } else if (req.params.boardId || req.body.boardId) {
+        const boardId = req.params.boardId || req.body.boardId;
+        if (mongoose.isValidObjectId(boardId)) {
+          const board = await Board.findById(boardId);
+          if (board && mongoose.isValidObjectId(board.project)) {
             const project = await Project.findById(board.project);
             if (project) workspaceId = project.workspace;
+          }
+        }
+      } else if (req.params.taskId || req.body.taskId) {
+        const taskId = req.params.taskId || req.body.taskId;
+        if (mongoose.isValidObjectId(taskId)) {
+          const task = await Task.findById(taskId);
+          if (task && mongoose.isValidObjectId(task.board)) {
+            const board = await Board.findById(task.board);
+            if (board && mongoose.isValidObjectId(board.project)) {
+              const project = await Project.findById(board.project);
+              if (project) workspaceId = project.workspace;
+            }
           }
         }
       }
@@ -114,8 +137,18 @@ const isAdmin = async (req, res, next) => {
     const workspace = await Workspace.findById(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
-    const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+    const member = workspace.members.find((m) => {
+      const userId = m?.userId;
+      if (!userId) return false;
+      return String(userId) === String(req.user._id);
+    });
+
     if (!member || !["owner", "admin"].includes(member.role)) {
+      console.error("isAdmin middleware: admin access denied", {
+        workspaceId,
+        userId: req.user?._id,
+        member: member ? { userId: String(member.userId), role: member.role } : null
+      });
       return res.status(403).json({ message: "Admin access required" });
     }
 
@@ -123,6 +156,7 @@ const isAdmin = async (req, res, next) => {
     req.userRole = member.role;
     next();
   } catch (error) {
+    console.error("isAdmin error", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -134,21 +168,30 @@ const isMember = async (req, res, next) => {
     // If workspaceId is not in params or body, try to find it from Project, Board, or Task
     if (!workspaceId) {
       if (req.params.projectId || req.body.projectId) {
-        const project = await Project.findById(req.params.projectId || req.body.projectId);
-        if (project) workspaceId = project.workspace;
-      } else if (req.params.boardId || req.body.boardId) {
-        const board = await Board.findById(req.params.boardId || req.body.boardId);
-        if (board) {
-          const project = await Project.findById(board.project);
+        const projectId = req.params.projectId || req.body.projectId;
+        if (mongoose.isValidObjectId(projectId)) {
+          const project = await Project.findById(projectId);
           if (project) workspaceId = project.workspace;
         }
-      } else if (req.params.taskId || req.body.taskId) {
-        const task = await Task.findById(req.params.taskId || req.body.taskId);
-        if (task) {
-          const board = await Board.findById(task.board);
-          if (board) {
+      } else if (req.params.boardId || req.body.boardId) {
+        const boardId = req.params.boardId || req.body.boardId;
+        if (mongoose.isValidObjectId(boardId)) {
+          const board = await Board.findById(boardId);
+          if (board && mongoose.isValidObjectId(board.project)) {
             const project = await Project.findById(board.project);
             if (project) workspaceId = project.workspace;
+          }
+        }
+      } else if (req.params.taskId || req.body.taskId) {
+        const taskId = req.params.taskId || req.body.taskId;
+        if (mongoose.isValidObjectId(taskId)) {
+          const task = await Task.findById(taskId);
+          if (task && mongoose.isValidObjectId(task.board)) {
+            const board = await Board.findById(task.board);
+            if (board && mongoose.isValidObjectId(board.project)) {
+              const project = await Project.findById(board.project);
+              if (project) workspaceId = project.workspace;
+            }
           }
         }
       }
@@ -159,8 +202,18 @@ const isMember = async (req, res, next) => {
     const workspace = await Workspace.findById(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
-    const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+    const member = workspace.members.find((m) => {
+      const userId = m?.userId;
+      if (!userId) return false;
+      return String(userId) === String(req.user._id);
+    });
+
     if (!member) {
+      console.error("isMember middleware: user not found in workspace members", {
+        workspaceId,
+        userId: req.user?._id,
+        members: workspace.members.map((m) => ({ userId: String(m.userId), role: m.role }))
+      });
       return res.status(403).json({ message: "Workspace membership required" });
     }
 

@@ -44,7 +44,7 @@ exports.createTask = async (req, res) => {
 // Get Tasks by Board
 exports.getTasks = async (req, res) => {
   try {
-    const { boardId } = req.params;
+    const boardId = req.params.boardId;
     const tasks = await Task.find({ board: boardId }).populate("assignedTo", "name email avatar");
     res.json(tasks);
   } catch (error) {

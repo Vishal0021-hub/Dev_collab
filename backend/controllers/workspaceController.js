@@ -55,26 +55,57 @@ exports.inviteToWorkspace = async (req, res) => {
       return res.status(403).json({ message: "Only owners and admins can invite members" });
     }
 
-    // Check if user is already a member
-    const isMember = workspace.members.some(m => m.userId.toString() === req.user._id.toString());
-    if (isMember) {
-      return res.status(400).json({ message: "User is already a member" });
+    // Check if invited email is already a member
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      const alreadyMember = workspace.members.some(
+        m => m.userId && m.userId.toString() === existingUser._id.toString()
+      );
+      if (alreadyMember) {
+        return res.status(400).json({ message: "This user is already a member of the workspace" });
+      }
     }
 
     const inviteRole = role || "member";
 
-    // Generate JWT invite token
+    // Generate JWT invite token (embed email + workspace + role)
     const token = jwt.sign(
       { workspaceId, email, role: inviteRole, type: "workspace_invite" },
       process.env.INVITE_SECRET || "invite_secret",
       { expiresIn: "7d" }
     );
 
-    // Send invitation email
-    const inviter = await User.findById(req.user._id);
-    const emailResult = await sendInviteEmail(email, workspace.name, inviter.name, inviteRole, token);
+    // Build invite link
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const inviteLink  = `${frontendUrl}/join/${token}`;
 
-    res.json({ message: "Invite sent", emailSent: !!emailResult });
+    // Send invitation email (gracefully skip if SMTP not configured)
+    let emailSent = false;
+    const inviter = await User.findById(req.user._id);
+    try {
+      await sendInviteEmail({
+        toEmail:       email,
+        inviterName:   inviter?.name || "A team member",
+        workspaceName: workspace.name,
+        role:          inviteRole,
+        inviteLink,
+      });
+      emailSent = true;
+    } catch (emailErr) {
+      console.error("[invite] Email send failed:", emailErr.message);
+      // Don't fail the whole invite — return the link even if email fails
+    }
+
+    await logActivity(workspaceId, req.user._id, "member_invited", {
+      invitedEmail: email,
+      role: inviteRole
+    });
+
+    res.json({
+      message:   emailSent ? "Invite sent via email" : "Invite created (email not sent — check SMTP config)",
+      inviteLink,
+      emailSent
+    });
 
   } catch (err) {
     res.status(500).json({ message: err.message });

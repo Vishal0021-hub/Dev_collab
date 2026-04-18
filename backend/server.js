@@ -16,6 +16,10 @@ const PORT = process.env.PORT || 5000;
 const ConnectDB = require("./config/db");
 ConnectDB();
 
+// Verify SMTP connection on startup
+const { verifySmtp } = require("./utils/emailService");
+verifySmtp();
+
 const { protect } = require("./middleware/authmiddleware");
 
 // ── Auth ──────────────────────────────────────────────────────

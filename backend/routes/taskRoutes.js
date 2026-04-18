@@ -14,25 +14,27 @@ const {
 const { protect } = require("../middleware/authmiddleware");
 const { isMember, isAdmin } = require("../middleware/roleMiddleware");
 
-// create task - Any member can create
-router.post("/", protect, isMember, createTask);
+// ── Specific prefix routes BEFORE generic /:id routes ──────────
 
-// get tasks by board - Any member can view
-router.get("/:boardId", protect, isMember, getTasks);
+// Move task — has explicit /move/ prefix — safe before /:taskId
+router.put("/move/:taskId", protect, moveTask);
 
-// update task metadata - Any member can update
-router.put("/:taskId", protect, isMember, updateTask);
+// GET tasks by board — just auth (data scoped by boardId)
+router.get("/board/:boardId", protect, getTasks);
 
-// move task to another board
-router.put("/move/:taskId", protect, isMember, moveTask);
+// Update status — specific suffix
+router.patch("/:taskId/status", protect, isMember, updateTaskStatus);
 
-// delete task - Only Owner and Admin
-router.delete("/:taskId", protect, isAdmin, deleteTask);
-
-// assign task - Owner and Admin only
+// Assign task — specific suffix, admin only
 router.put("/:taskId/assign", protect, isAdmin, assignTask);
 
-// update task status (todo | inprogress | review | done) - Any member can update status
-router.patch("/:taskId/status", protect, isMember, updateTaskStatus);
+// Create task — body has boardId, isMember resolves workspace from boardId
+router.post("/", protect, isMember, createTask);
+
+// Update task metadata
+router.put("/:taskId", protect, updateTask);
+
+// Delete task
+router.delete("/:taskId", protect, isAdmin, deleteTask);
 
 module.exports = router;

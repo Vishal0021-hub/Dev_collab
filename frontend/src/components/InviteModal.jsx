@@ -3,30 +3,45 @@ import { toast } from "react-hot-toast";
 import API from "../services/api";
 
 const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
-  const [email, setEmail]     = useState("");
-  const [role, setRole]       = useState("member");
-  const [loading, setLoading] = useState(false);
+  const [email,     setEmail]     = useState("");
+  const [role,      setRole]      = useState("member");
+  const [loading,   setLoading]   = useState(false);
+  const [inviteLink, setInviteLink] = useState(null);
+  const [emailSent, setEmailSent]   = useState(false);
 
   const handleInvite = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
 
-    const loadingToast = toast.loading("Sending invitation...");
+    const loadingToast = toast.loading("Sending invitation…");
     try {
       setLoading(true);
-      await API.post(`/workspaces/${workspaceId}/invite`, {
+      const res = await API.post(`/workspaces/${workspaceId}/invite`, {
         email: email.trim(),
         role,
       });
 
-      toast.success(`Invite sent to ${email}`, { id: loadingToast });
-      onInviteSent();
-      onClose();
+      const data = res.data;
+      setInviteLink(data.inviteLink || null);
+      setEmailSent(data.emailSent || false);
+
+      if (data.emailSent) {
+        toast.success(`Invite emailed to ${email} ✓`, { id: loadingToast });
+      } else {
+        toast.success("Invite link generated — copy it below", { id: loadingToast });
+      }
+
+      onInviteSent?.();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to send invitation", { id: loadingToast });
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyLink = () => {
+    if (!inviteLink) return;
+    navigator.clipboard.writeText(inviteLink).then(() => toast.success("Link copied!"));
   };
 
   return (
@@ -302,6 +317,23 @@ const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
               )}
             </button>
           </div>
+          {/* ── Invite link panel (after invite created) ── */}
+          {inviteLink && (
+            <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 12, background: emailSent ? "rgba(52,211,153,0.08)" : "rgba(251,191,36,0.08)", border: `1px solid ${emailSent ? "rgba(52,211,153,0.2)" : "rgba(251,191,36,0.2)"}` }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: emailSent ? "#34d399" : "#fbbf24", marginBottom: 8 }}>
+                {emailSent ? "✓ Email sent! Share this link too:" : "⚠ Email not sent — share this link manually:"}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ flex: 1, fontSize: 11, color: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" }}>
+                  {inviteLink}
+                </div>
+                <button onClick={copyLink} style={{ flexShrink: 0, background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 8, padding: "8px 12px", color: "#818cf8", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Copy</button>
+              </div>
+              {emailSent && (
+                <button onClick={onClose} style={{ width: "100%", marginTop: 12, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Done</button>
+              )}
+            </div>
+          )}
         </form>
       </div>
 
