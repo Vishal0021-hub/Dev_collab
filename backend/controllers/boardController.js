@@ -36,6 +36,7 @@ exports.getBoards = async (req, res) => {
 
     res.json(boards);
   } catch (error) {
+    console.error("getBoards error", error);
     res.status(500).json({ message: error.message });
   }
 };

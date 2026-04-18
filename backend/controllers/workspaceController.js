@@ -177,3 +177,63 @@ exports.changeRole = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getDashboard = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const Activity = require("../models/Activity");
+    const Task = require("../models/Task");
+    const Board = require("../models/Board");
+    const Project = require("../models/Project");
+    const Channel = require("../models/Channel");
+
+    const workspace = await Workspace.findById(workspaceId).populate(
+      "members.userId",
+      "name email avatar"
+    );
+    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
+    // Get all projects → boards → tasks in this workspace
+    const projects = await Project.find({ workspace: workspaceId });
+    const projectIds = projects.map(p => p._id);
+
+    const boards = await Board.find({ project: { $in: projectIds } });
+    const boardIds = boards.map(b => b._id);
+
+    const allTasks = await Task.find({ board: { $in: boardIds } });
+
+    // Task counts by status
+    const taskCounts = {
+      todo:       allTasks.filter(t => t.status === "todo").length,
+      inprogress: allTasks.filter(t => t.status === "inprogress").length,
+      review:     allTasks.filter(t => t.status === "review").length,
+      done:       allTasks.filter(t => t.status === "done").length,
+      total:      allTasks.length
+    };
+
+    // Recent 10 activities
+    const recentActivity = await Activity.find({ workspace: workspaceId })
+      .populate("user", "name avatar")
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Member list with roles
+    const members = workspace.members.map(m => ({
+      _id:      m.userId?._id,
+      name:     m.userId?.name,
+      email:    m.userId?.email,
+      avatar:   m.userId?.avatar,
+      role:     m.role,
+      joinedAt: m.joinedAt
+    }));
+
+    // Channel list
+    const channels = await Channel.find({ workspace: workspaceId })
+      .select("name isPrivate description createdAt")
+      .sort({ createdAt: 1 });
+
+    res.json({ taskCounts, recentActivity, members, channels });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

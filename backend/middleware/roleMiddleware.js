@@ -58,6 +58,7 @@ const authorize = (allowedRoles) => {
 
       next();
     } catch (error) {
+      console.error("isMember middleware error", error);
       res.status(500).json({ message: error.message });
     }
   };
@@ -83,7 +84,34 @@ const isOwner = async (req, res, next) => {
 
 const isAdmin = async (req, res, next) => {
   try {
-    const workspace = await Workspace.findById(req.params.workspaceId || req.body.workspaceId);
+    let workspaceId = req.params.workspaceId || req.body.workspaceId;
+
+    // If workspaceId is not in params or body, try to find it from Project, Board, or Task
+    if (!workspaceId) {
+      if (req.params.projectId || req.body.projectId) {
+        const project = await Project.findById(req.params.projectId || req.body.projectId);
+        if (project) workspaceId = project.workspace;
+      } else if (req.params.boardId || req.body.boardId) {
+        const board = await Board.findById(req.params.boardId || req.body.boardId);
+        if (board) {
+          const project = await Project.findById(board.project);
+          if (project) workspaceId = project.workspace;
+        }
+      } else if (req.params.taskId || req.body.taskId) {
+        const task = await Task.findById(req.params.taskId || req.body.taskId);
+        if (task) {
+          const board = await Board.findById(task.board);
+          if (board) {
+            const project = await Project.findById(board.project);
+            if (project) workspaceId = project.workspace;
+          }
+        }
+      }
+    }
+
+    if (!workspaceId) return res.status(400).json({ message: "Workspace not found" });
+
+    const workspace = await Workspace.findById(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
     const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
@@ -101,7 +129,34 @@ const isAdmin = async (req, res, next) => {
 
 const isMember = async (req, res, next) => {
   try {
-    const workspace = await Workspace.findById(req.params.workspaceId || req.body.workspaceId);
+    let workspaceId = req.params.workspaceId || req.body.workspaceId;
+
+    // If workspaceId is not in params or body, try to find it from Project, Board, or Task
+    if (!workspaceId) {
+      if (req.params.projectId || req.body.projectId) {
+        const project = await Project.findById(req.params.projectId || req.body.projectId);
+        if (project) workspaceId = project.workspace;
+      } else if (req.params.boardId || req.body.boardId) {
+        const board = await Board.findById(req.params.boardId || req.body.boardId);
+        if (board) {
+          const project = await Project.findById(board.project);
+          if (project) workspaceId = project.workspace;
+        }
+      } else if (req.params.taskId || req.body.taskId) {
+        const task = await Task.findById(req.params.taskId || req.body.taskId);
+        if (task) {
+          const board = await Board.findById(task.board);
+          if (board) {
+            const project = await Project.findById(board.project);
+            if (project) workspaceId = project.workspace;
+          }
+        }
+      }
+    }
+
+    if (!workspaceId) return res.status(400).json({ message: "Workspace not found" });
+
+    const workspace = await Workspace.findById(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
     const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
@@ -113,6 +168,7 @@ const isMember = async (req, res, next) => {
     req.userRole = member.role;
     next();
   } catch (error) {
+    console.error("isMember error", error);
     res.status(500).json({ message: error.message });
   }
 };
