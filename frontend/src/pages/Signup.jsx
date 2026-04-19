@@ -27,6 +27,15 @@ function Signup() {
 
   const handleSignup = async () => {
     try {
+      if (!form.name.trim()) {
+        return toast.error("Please enter your name");
+      }
+
+      // Gmail-only restriction (front-end fast-fail)
+      if (!form.email || !/^[a-zA-Z0-9._%+\-]+@gmail\.com$/i.test(form.email)) {
+        return toast.error("Only Gmail accounts (@gmail.com) are allowed to sign up");
+      }
+
       if (form.password !== form.confirm) {
         return toast.error("Passwords do not match");
       }
@@ -43,7 +52,7 @@ function Signup() {
         password: form.password,
       });
 
-      toast.success("Account created successfully!", { id: loadingToast });
+      toast.success("Account created! Redirecting to login…", { id: loadingToast });
 
       setTimeout(() => {
         window.location.href = "/login";
@@ -111,7 +120,7 @@ function Signup() {
                     <svg className="su-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M2 8l10 6 10-6" />
                     </svg>
-                    <input type="email" placeholder="alex@company.dev" className="su-input" onChange={set("email")} />
+                    <input type="email" placeholder="yourname@gmail.com" className="su-input" onChange={set("email")} />
                   </div>
                 </div>
 

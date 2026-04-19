@@ -5,7 +5,12 @@ const bcrypt= require("bcrypt")
 //Register user
 exports.registerUser=async (req,res) =>{
     try{
-        const {name,email,password} = req.body; //destructing the data 
+    const {name,email,password} = req.body; //destructing the data 
+
+    // Only allow Gmail accounts
+    if (!email || !/^[a-zA-Z0-9._%+\-]+@gmail\.com$/i.test(email)) {
+      return res.status(400).json({ message: "Only Gmail accounts (@gmail.com) are allowed to sign up." });
+    }
 
     // check if user exists
     const existingUser = await User.findOne({ email });
