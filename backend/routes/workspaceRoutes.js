@@ -12,6 +12,7 @@ const {
 } = require("../controllers/workspaceController");
 const { protect } = require("../middleware/authmiddleware");
 const { authorize, isAdmin, isOwner, isMember } = require("../middleware/roleMiddleware");
+const { inviteLimiter } = require("../middleware/securityMiddleware");
 
 router.post("/", protect, createWorkspace);
 router.get("/", protect, getWorkspaces);
@@ -19,8 +20,8 @@ router.get("/", protect, getWorkspaces);
 // get members - Any member can view
 router.get("/:workspaceId/members", protect, authorize(["owner", "admin", "member"]), getWorkspaceMembers);
 
-// invite - Only Owner and Admin
-router.post("/:workspaceId/invite", protect, isAdmin, inviteToWorkspace);
+// invite - Only Owner and Admin, rate limited (10 req / 15 min)
+router.post("/:workspaceId/invite", protect, isAdmin, inviteLimiter, inviteToWorkspace);
 
 // join workspace via invite token
 router.post("/join/:token", protect, joinWorkspace);

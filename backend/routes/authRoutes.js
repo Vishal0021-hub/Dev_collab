@@ -1,10 +1,11 @@
-const express=require('express')
-const router = express.Router();
+const express = require("express");
+const router  = express.Router();
 
-const {registerUser} = require("../controllers/authController.js");
-const {loginUser} = require("../controllers/authController.js");
+const { registerUser, loginUser } = require("../controllers/authController.js");
+const { authLimiter } = require("../middleware/securityMiddleware");
 
-router.post("/register",registerUser);
-router.post("/login",loginUser)
+// Apply strict rate limit to auth endpoints (10 req / 15 min per IP)
+router.post("/register", authLimiter, registerUser);
+router.post("/login",    authLimiter, loginUser);
 
-module.exports = router;
+module.exports = router;
