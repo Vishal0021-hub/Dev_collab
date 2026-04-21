@@ -11,6 +11,8 @@ import InviteModal from "../components/InviteModal";
 import ActivityLog from "../components/ActivityLog";
 import AssignDropdown from "../components/AssignDropdown";
 import NotificationBell from "../components/NotificationBell";
+import AttachmentPanel from "../components/AttachmentPanel";
+import MonacoEditorPanel from "../components/MonacoEditorPanel";
 import { useWorkspace } from "../context/WorkspaceContext";
 
 /* ─── Icons ──────────────────────────────────────────────────── */
@@ -70,8 +72,9 @@ const Board = () => {
   const [colLoading, setColLoading] = useState(false);
 
   // Task modal
-  const [taskModal, setTaskModal] = useState(null);
-  const [taskForm,  setTaskForm]  = useState({
+  const [taskModal,    setTaskModal]    = useState(null);
+  const [modalTab,     setModalTab]     = useState("details"); // "details" | "attachments" | "code"
+  const [taskForm,     setTaskForm]     = useState({
     title: "", description: "", priority: "medium", dueDate: "", assignedTo: "", status: "todo"
   });
 
@@ -199,6 +202,7 @@ const Board = () => {
   const openAddTask = (boardId) => {
     setTaskForm({ title: "", description: "", priority: "medium", dueDate: "", assignedTo: "", status: "todo" });
     setTaskModal({ mode: "add", boardId });
+    setModalTab("details");
   };
 
   const openEditTask = (task) => {
@@ -211,6 +215,7 @@ const Board = () => {
       status:      task.status || "todo",
     });
     setTaskModal({ mode: "edit", boardId: task.board, task });
+    setModalTab("details");
   };
 
   const updateTaskStatus = async (taskId, newStatus) => {
@@ -607,92 +612,126 @@ const Board = () => {
         {/* ── Task Modal ── */}
         {taskModal && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setTaskModal(null)}>
-            <div style={{ background: "rgba(10,13,22,0.99)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 32, width: 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: "rgba(10,13,22,0.99)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 32, width: taskModal.mode === "edit" ? 620 : 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
+
+              {/* Title */}
               <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginBottom: 4, fontFamily: "Figtree, sans-serif" }}>
-                {taskModal.mode === "add" ? "New Task" : "Edit Task"}
+                {taskModal.mode === "add" ? "New Task" : taskModal.task?.title || "Edit Task"}
               </div>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 24 }}>
-                {taskModal.mode === "add" ? "Create a new task in this column." : "Update task details and status."}
-              </p>
-              <form onSubmit={submitTaskModal}>
 
-                {/* Status Stepper — edit mode only */}
-                {taskModal.mode === "edit" && taskModal.task?._id && (
-                  <div style={{ marginBottom: 24 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Status</label>
-                    <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, border: "1px solid rgba(255,255,255,0.07)" }}>
-                      {STATUS_STEPS.map((s) => {
-                        const isActive = (taskModal.task?.status || taskForm.status) === s.key;
-                        const stepIdx = STATUS_STEPS.findIndex(x => x.key === (taskModal.task?.status || taskForm.status));
-                        const isPast  = STATUS_STEPS.findIndex(x => x.key === s.key) < stepIdx;
+              {/* ── Tabs (edit mode only) ── */}
+              {taskModal.mode === "edit" && (
+                <div style={{ display: "flex", gap: 2, marginBottom: 20, marginTop: 12, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
+                  {[
+                    { key: "details",     label: "📋 Details" },
+                    { key: "attachments", label: "📎 Attachments" },
+                    { key: "code",        label: "</> Code" },
+                  ].map(tab => (
+                    <button key={tab.key} type="button" onClick={() => setModalTab(tab.key)}
+                      style={{
+                        flex: 1, border: "none", borderRadius: 8, padding: "7px 10px",
+                        cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.15s",
+                        background: modalTab === tab.key ? "rgba(99,102,241,0.2)" : "transparent",
+                        color: modalTab === tab.key ? "#818cf8" : "rgba(255,255,255,0.4)",
+                        borderBottom: modalTab === tab.key ? "2px solid #6366f1" : "2px solid transparent",
+                      }}
+                    >{tab.label}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Details Tab (+ add mode) ── */}
+              {(modalTab === "details" || taskModal.mode === "add") && (
+                <form onSubmit={submitTaskModal}>
+
+                  {/* Status Stepper — edit mode only */}
+                  {taskModal.mode === "edit" && taskModal.task?._id && (
+                    <div style={{ marginBottom: 24 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Status</label>
+                      <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, border: "1px solid rgba(255,255,255,0.07)" }}>
+                        {STATUS_STEPS.map((s) => {
+                          const isActive = (taskModal.task?.status || taskForm.status) === s.key;
+                          const stepIdx = STATUS_STEPS.findIndex(x => x.key === (taskModal.task?.status || taskForm.status));
+                          const isPast  = STATUS_STEPS.findIndex(x => x.key === s.key) < stepIdx;
+                          return (
+                            <button key={s.key} type="button" onClick={() => updateTaskStatus(taskModal.task._id, s.key)}
+                              style={{ flex: 1, border: "none", borderRadius: 9, padding: "8px 4px", cursor: "pointer", fontWeight: isActive ? 700 : 500, fontSize: 11, transition: "all 0.2s",
+                                background: isActive ? s.color + "25" : "transparent",
+                                color: isActive ? s.color : isPast ? s.color + "90" : "rgba(255,255,255,0.3)",
+                                borderBottom: isActive ? `2px solid ${s.color}` : "2px solid transparent",
+                                display: "flex", flexDirection: "column", alignItems: "center", gap: 2
+                              }}>
+                              <span style={{ fontSize: 18 }}>{s.icon}</span>
+                              <span>{s.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {(() => {
+                        const idx = STATUS_STEPS.findIndex(s => s.key === (taskModal.task?.status || taskForm.status));
+                        const pct = Math.round(((idx + 1) / STATUS_STEPS.length) * 100);
+                        const col = STATUS_STEPS[idx]?.color || "#94a3b8";
                         return (
-                          <button key={s.key} type="button" onClick={() => updateTaskStatus(taskModal.task._id, s.key)}
-                            style={{ flex: 1, border: "none", borderRadius: 9, padding: "8px 4px", cursor: "pointer", fontWeight: isActive ? 700 : 500, fontSize: 11, transition: "all 0.2s",
-                              background: isActive ? s.color + "25" : "transparent",
-                              color: isActive ? s.color : isPast ? s.color + "90" : "rgba(255,255,255,0.3)",
-                              borderBottom: isActive ? `2px solid ${s.color}` : "2px solid transparent",
-                              display: "flex", flexDirection: "column", alignItems: "center", gap: 2
-                            }}>
-                            <span style={{ fontSize: 18 }}>{s.icon}</span>
-                            <span>{s.label}</span>
-                          </button>
+                          <div style={{ height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 4, marginTop: 8, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${pct}%`, background: col, borderRadius: 4, transition: "width 0.4s ease" }}/>
+                          </div>
                         );
-                      })}
+                      })()}
                     </div>
-                    {/* Progress bar */}
-                    {(() => {
-                      const idx = STATUS_STEPS.findIndex(s => s.key === (taskModal.task?.status || taskForm.status));
-                      const pct = Math.round(((idx + 1) / STATUS_STEPS.length) * 100);
-                      const col = STATUS_STEPS[idx]?.color || "#94a3b8";
-                      return (
-                        <div style={{ height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 4, marginTop: 8, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${pct}%`, background: col, borderRadius: 4, transition: "width 0.4s ease" }}/>
-                        </div>
-                      );
-                    })()}
+                  )}
+
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Title *</label>
+                  <input autoFocus required value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="Task title…"
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }}/>
+
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Description</label>
+                  <textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description…" rows={3}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }}/>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Priority</label>
+                      <select value={taskForm.priority} onChange={e => setTaskForm(f => ({ ...f, priority: e.target.value }))}
+                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", cursor: "pointer" }}>
+                        <option value="low">🟢 Low</option>
+                        <option value="medium">🟡 Medium</option>
+                        <option value="high">🔴 High</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Due Date</label>
+                      <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))}
+                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", colorScheme: "dark", boxSizing: "border-box" }}/>
+                    </div>
                   </div>
-                )}
 
-                <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Title *</label>
-                <input autoFocus required value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="Task title…"
-                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }}/>
+                  {isAdmin && (
+                    <>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Assign To</label>
+                      <AssignDropdown members={members} selectedId={taskForm.assignedTo} onSelect={uid => setTaskForm(f => ({ ...f, assignedTo: uid }))}/>
+                      <div style={{ marginBottom: 8 }}/>
+                    </>
+                  )}
 
-                <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Description</label>
-                <textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description…" rows={3}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }}/>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Priority</label>
-                    <select value={taskForm.priority} onChange={e => setTaskForm(f => ({ ...f, priority: e.target.value }))}
-                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", cursor: "pointer" }}>
-                      <option value="low">🟢 Low</option>
-                      <option value="medium">🟡 Medium</option>
-                      <option value="high">🔴 High</option>
-                    </select>
+                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                    <button type="button" onClick={() => setTaskModal(null)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Cancel</button>
+                    <button type="submit" style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                      {taskModal.mode === "add" ? "Create Task" : "Save Changes"}
+                    </button>
                   </div>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Due Date</label>
-                    <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))}
-                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", colorScheme: "dark", boxSizing: "border-box" }}/>
-                  </div>
-                </div>
+                </form>
+              )}
 
-                {isAdmin && (
-                  <>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Assign To</label>
-                    <AssignDropdown members={members} selectedId={taskForm.assignedTo} onSelect={uid => setTaskForm(f => ({ ...f, assignedTo: uid }))}/>
-                    <div style={{ marginBottom: 8 }}/>
-                  </>
-                )}
+              {/* ── Attachments Tab ── */}
+              {modalTab === "attachments" && taskModal.mode === "edit" && (
+                <AttachmentPanel taskId={taskModal.task._id} isAdmin={isAdmin} />
+              )}
 
-                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-                  <button type="button" onClick={() => setTaskModal(null)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Cancel</button>
-                  <button type="submit" style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
-                    {taskModal.mode === "add" ? "Create Task" : "Save Changes"}
-                  </button>
-                </div>
-              </form>
+              {/* ── Code Tab ── */}
+              {modalTab === "code" && taskModal.mode === "edit" && (
+                <MonacoEditorPanel taskId={taskModal.task._id} taskTitle={taskModal.task?.title} />
+              )}
+
             </div>
           </div>
         )}
