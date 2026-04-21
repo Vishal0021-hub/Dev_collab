@@ -23,8 +23,13 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ["text", "file", "image", "system"],
+    enum: ["text", "file", "image", "system", "snippet"],
     default: "text"
+  },
+  snippetId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "CodeSnippet",
+    default: null
   },
   fileUrl: {
     type: String,

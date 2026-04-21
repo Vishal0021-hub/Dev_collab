@@ -40,7 +40,19 @@ const taskSchema = new mongoose.Schema(
     dueDate: {
       type: Date,
       default: null
-    }
+    },
+
+    attachments: [
+      {
+        url:        { type: String, required: true },
+        publicId:   { type: String, required: true }, // Cloudinary public_id (for deletion)
+        filename:   { type: String, required: true },
+        mimetype:   { type: String, required: true },
+        size:       { type: Number, required: true }, // bytes
+        uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        uploadedAt: { type: Date, default: Date.now },
+      }
+    ]
   },
   { timestamps: true }
 );

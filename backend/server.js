@@ -43,9 +43,13 @@ app.use("/api/projects", projectRoutes);
 const boardRoutes = require("./routes/boardRoutes");
 app.use("/api/boards", boardRoutes);
 
-// ── Tasks (includes /status) ──────────────────────────────────
+// ── Tasks (includes /status + /attachments) ───────────────────
 const taskRoutes = require("./routes/taskRoutes");
 app.use("/api/tasks", taskRoutes);
+
+// ── Task Attachments (Cloudinary upload/delete) ───────────────
+const attachmentRoutes = require("./routes/attachmentRoutes");
+app.use("/api/tasks", attachmentRoutes);
 
 // ── Activity feed ─────────────────────────────────────────────
 const activityRoutes = require("./routes/activityRoutes");
@@ -62,6 +66,10 @@ app.use("/api/dm", dmRoutes);
 // ── Notifications ─────────────────────────────────────────────
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/api/notifications", notificationRoutes);
+
+// ── Code Snippets ──────────────────────────────────────────────
+const snippetRoutes = require("./routes/snippetRoutes");
+app.use("/api/snippets", snippetRoutes);
 
 // ── Global error handler ──────────────────────────────────────
 app.use((err, req, res, next) => {
