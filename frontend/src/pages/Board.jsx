@@ -13,6 +13,7 @@ import AssignDropdown from "../components/AssignDropdown";
 import NotificationBell from "../components/NotificationBell";
 import AttachmentPanel from "../components/AttachmentPanel";
 import MonacoEditorPanel from "../components/MonacoEditorPanel";
+import { BoardSkeleton } from "../components/Skeletons";
 import { useWorkspace } from "../context/WorkspaceContext";
 
 /* ─── Icons ──────────────────────────────────────────────────── */
@@ -295,6 +296,12 @@ const Board = () => {
   const isAdmin = userRole === "owner" || userRole === "admin";
 
   /* ─── Render ─────────────────────────────────────────────────── */
+  if (loading) return (
+    <AppShell>
+      <BoardSkeleton />
+    </AppShell>
+  );
+
   return (
     <AppShell>
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#07090f", overflow: "hidden" }}>

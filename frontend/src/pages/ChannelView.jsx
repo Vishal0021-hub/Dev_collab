@@ -4,6 +4,7 @@ import API from "../services/api";
 import { toast } from "react-hot-toast";
 import AppShell from "../components/AppShell";
 import NotificationBell from "../components/NotificationBell";
+import { MessageSkeleton } from "../components/Skeletons";
 
 const IconSend = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -112,17 +113,7 @@ export default function ChannelView() {
         {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 0", display: "flex", flexDirection: "column", gap: 2 }}>
           {loading ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[1,2,3,4].map(i => (
-                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.06)", animation: "pulse 1.5s ease-in-out infinite", flexShrink: 0 }}/>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 12, width: 120, background: "rgba(255,255,255,0.06)", borderRadius: 6, marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }}/>
-                    <div style={{ height: 10, width: "60%", background: "rgba(255,255,255,0.04)", borderRadius: 6, animation: "pulse 1.5s ease-in-out infinite", animationDelay: "0.2s" }}/>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <MessageSkeleton count={6} />
           ) : messages.length === 0 ? (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.3)", gap: 12 }}>
               <div style={{ width: 60, height: 60, borderRadius: "50%", background: "rgba(99,102,241,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}><IconHash/></div>

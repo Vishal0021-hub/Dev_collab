@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useWorkspace } from "../context/WorkspaceContext";
 import AppShell from "../components/AppShell";
 import NotificationBell from "../components/NotificationBell";
+import { DashboardSkeleton } from "../components/Skeletons";
 import "../utils/collab.css";
 
 /* ─── Icons ─────────────────────────────────────────────────── */
@@ -116,6 +117,12 @@ export default function Dashboard() {
   const tc = dashboard?.taskCounts || {};
   const total = tc.total || 0;
   const pct = (n) => total ? Math.round((n / total) * 100) : 0;
+
+  if (loading) return (
+    <AppShell>
+      <DashboardSkeleton />
+    </AppShell>
+  );
 
   return (
     <AppShell>
