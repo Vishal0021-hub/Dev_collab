@@ -1,6 +1,7 @@
 const Channel = require("../models/Channel");
 const Message = require("../models/Message");
 const { logActivity } = require("../utils/activityLogger");
+const { getIO } = require("../socket");
 
 // GET /api/channels?workspaceId=xxx
 exports.getChannels = async (req, res) => {
@@ -8,7 +9,6 @@ exports.getChannels = async (req, res) => {
     const { workspaceId } = req.query;
     if (!workspaceId) return res.status(400).json({ message: "workspaceId is required" });
 
-    // Return public channels + private channels where user is a member
     const channels = await Channel.find({
       workspace: workspaceId,
       $or: [
@@ -34,7 +34,6 @@ exports.createChannel = async (req, res) => {
       return res.status(400).json({ message: "name and workspaceId are required" });
     }
 
-    // Check for duplicate name in workspace
     const existing = await Channel.findOne({ workspace: workspaceId, name: name.trim() });
     if (existing) return res.status(409).json({ message: "A channel with this name already exists" });
 
@@ -48,7 +47,6 @@ exports.createChannel = async (req, res) => {
     });
 
     await channel.populate("createdBy", "name avatar");
-
     res.status(201).json(channel);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -63,15 +61,16 @@ exports.deleteChannel = async (req, res) => {
     const channel = await Channel.findById(channelId);
     if (!channel) return res.status(404).json({ message: "Channel not found" });
 
-    // Only channel creator or workspace admin/owner can delete
     const isCreator = channel.createdBy.toString() === req.user._id.toString();
     if (!isCreator && !["owner", "admin"].includes(req.userRole)) {
       return res.status(403).json({ message: "Only the channel creator or an admin can delete this channel" });
     }
 
-    // Delete all messages in this channel
     await Message.deleteMany({ channel: channelId });
     await Channel.findByIdAndDelete(channelId);
+
+    // Notify all channel members
+    try { getIO().to(`ch:${channelId}`).emit("channel:deleted", { channelId }); } catch {}
 
     res.json({ message: "Channel deleted" });
   } catch (err) {
@@ -79,18 +78,17 @@ exports.deleteChannel = async (req, res) => {
   }
 };
 
-// GET /api/channels/:channelId/messages?page=1&limit=50
+// GET /api/channels/:channelId/messages
 exports.getMessages = async (req, res) => {
   try {
     const { channelId } = req.params;
-    const page = parseInt(req.query.page) || 1;
+    const page  = parseInt(req.query.page)  || 1;
     const limit = parseInt(req.query.limit) || 50;
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
 
     const channel = await Channel.findById(channelId);
     if (!channel) return res.status(404).json({ message: "Channel not found" });
 
-    // Check private channel access
     if (channel.isPrivate) {
       const isMember = channel.members.some(m => m.user.toString() === req.user._id.toString());
       if (!isMember) return res.status(403).json({ message: "You are not a member of this private channel" });
@@ -103,7 +101,6 @@ exports.getMessages = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    // Return in chronological order
     res.json(messages.reverse());
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -123,7 +120,6 @@ exports.sendMessage = async (req, res) => {
     const channel = await Channel.findById(channelId);
     if (!channel) return res.status(404).json({ message: "Channel not found" });
 
-    // Check private channel access
     if (channel.isPrivate) {
       const isMember = channel.members.some(m => m.user.toString() === req.user._id.toString());
       if (!isMember) return res.status(403).json({ message: "You are not a member of this private channel" });
@@ -140,6 +136,11 @@ exports.sendMessage = async (req, res) => {
 
     await message.populate("sender", "name avatar email");
     if (replyTo) await message.populate("replyTo", "content sender");
+
+    // ── Real-time: broadcast to channel room ──────────────────
+    try {
+      getIO().to(`ch:${channelId}`).emit("channel:newMessage", message.toObject());
+    } catch {}
 
     res.status(201).json(message);
   } catch (err) {

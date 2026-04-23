@@ -47,4 +47,4 @@ const channelSchema = new mongoose.Schema({
 channelSchema.index({ workspace: 1, name: 1 });
 channelSchema.index({ members: 1 });
 
-module.exports = mongoose.model("Channel", channelSchema);
+module.exports = mongoose.models.Channel || mongoose.model("Channel", channelSchema);

@@ -51,4 +51,4 @@ const codeSnippetSchema = new mongoose.Schema(
 // Text index for search
 codeSnippetSchema.index({ title: "text", code: "text" });
 
-module.exports = mongoose.model("CodeSnippet", codeSnippetSchema);
+module.exports = mongoose.models.CodeSnippet || mongoose.model("CodeSnippet", codeSnippetSchema);

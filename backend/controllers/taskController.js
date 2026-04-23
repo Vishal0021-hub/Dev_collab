@@ -1,7 +1,12 @@
-const Task = require("../models/Task");
+const Task  = require("../models/Task");
 const Board = require("../models/Board");
-const User = require("../models/User");
+const User  = require("../models/User");
 const { logActivity } = require("../utils/activityLogger");
+const { getIO } = require("../socket");
+
+const emitToWs = (workspaceId, event, payload) => {
+  try { getIO().to(`ws:${workspaceId}`).emit(event, payload); } catch {}
+};
 
 // Create Task
 exports.createTask = async (req, res) => {
@@ -32,6 +37,9 @@ exports.createTask = async (req, res) => {
         taskTitle: title,
         projectName: board.project?.name || "Project"
       }, { entityType: "task", entityId: task._id });
+
+      // Real-time
+      emitToWs(workspaceId, "task:created", { task: task.toObject(), boardId });
     }
 
     res.status(201).json(task);
@@ -88,8 +96,16 @@ exports.moveTask = async (req, res) => {
     await logActivity(newBoard.project.workspace, req.user._id, "task_moved", {
       taskTitle: task.title,
       fromBoard: oldBoard.name,
-      toBoard: newBoard.name
+      toBoard:   newBoard.name
     }, { entityType: "task", entityId: task._id });
+
+    // Real-time
+    emitToWs(newBoard.project.workspace, "task:moved", {
+      taskId,
+      fromBoardId: oldBoard._id.toString(),
+      toBoardId:   boardId,
+      task:        task.toObject(),
+    });
 
     res.json({ message: "Task moved successfully", task });
 
@@ -112,6 +128,9 @@ exports.deleteTask = async (req, res) => {
 
     await logActivity(workspaceId, req.user._id, "task_deleted", { taskTitle },
       { entityType: "task", entityId: taskId });
+
+    // Real-time
+    emitToWs(workspaceId, "task:deleted", { taskId });
 
     res.json({ message: "Task deleted successfully" });
   } catch (error) {
@@ -152,6 +171,13 @@ exports.assignTask = async (req, res) => {
     }
 
     const populated = await Task.findById(taskId).populate("assignedTo", "name email avatar");
+
+    // Real-time
+    emitToWs(board.project.workspace, "task:assigned", {
+      taskId,
+      task: populated.toObject(),
+    });
+
     res.json({ message: "Task assigned", task: populated });
 
   } catch (err) {
@@ -185,6 +211,14 @@ exports.updateTaskStatus = async (req, res) => {
         oldStatus,
         newStatus: status
       }, { entityType: "task", entityId: task._id });
+
+      // Real-time
+      emitToWs(board.project.workspace, "task:statusChanged", {
+        taskId,
+        boardId: task.board.toString(),
+        status,
+        oldStatus,
+      });
     }
 
     res.json({ message: "Task status updated", task });

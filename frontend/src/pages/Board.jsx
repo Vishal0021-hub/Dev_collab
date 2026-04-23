@@ -15,6 +15,7 @@ import AttachmentPanel from "../components/AttachmentPanel";
 import MonacoEditorPanel from "../components/MonacoEditorPanel";
 import { BoardSkeleton } from "../components/Skeletons";
 import { useWorkspace } from "../context/WorkspaceContext";
+import { useSocket } from "../context/SocketContext";
 
 /* ─── Icons ──────────────────────────────────────────────────── */
 const IconPlus      = ({ size=16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
@@ -127,6 +128,59 @@ const Board = () => {
     if (typeof v === "object" && v._id) return v._id.toString();
     return String(v);
   };
+
+  /* ── Real-time: join workspace room and listen for task events ── */
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket || !workspaceId) return;
+
+    socket.emit("join:workspace", workspaceId);
+
+    const onTaskCreated = ({ task, boardId }) => {
+      setTasks(prev => {
+        if (prev.find(t => t._id === task._id)) return prev;
+        return [...prev, { ...task, board: normalizeId(boardId) }];
+      });
+    };
+
+    const onTaskMoved = ({ taskId, fromBoardId, toBoardId }) => {
+      setTasks(prev => prev.map(t =>
+        normalizeId(t._id) === normalizeId(taskId)
+          ? { ...t, board: normalizeId(toBoardId) }
+          : t
+      ));
+    };
+
+    const onTaskDeleted = ({ taskId }) => {
+      setTasks(prev => prev.filter(t => normalizeId(t._id) !== normalizeId(taskId)));
+    };
+
+    const onTaskAssigned = ({ task }) => {
+      setTasks(prev => prev.map(t => normalizeId(t._id) === normalizeId(task._id) ? { ...t, ...task } : t));
+    };
+
+    const onStatusChanged = ({ taskId, boardId, status }) => {
+      setTasks(prev => prev.map(t =>
+        normalizeId(t._id) === normalizeId(taskId) ? { ...t, status } : t
+      ));
+    };
+
+    socket.on("task:created",       onTaskCreated);
+    socket.on("task:moved",         onTaskMoved);
+    socket.on("task:deleted",       onTaskDeleted);
+    socket.on("task:assigned",      onTaskAssigned);
+    socket.on("task:statusChanged", onStatusChanged);
+
+    return () => {
+      socket.off("task:created",       onTaskCreated);
+      socket.off("task:moved",         onTaskMoved);
+      socket.off("task:deleted",       onTaskDeleted);
+      socket.off("task:assigned",      onTaskAssigned);
+      socket.off("task:statusChanged", onStatusChanged);
+    };
+  }, [socket, workspaceId]);
+
+
 
   /* KEY FIX: fetch boards then tasks — errors surfaced via toast */
   const fetchBoards = async () => {

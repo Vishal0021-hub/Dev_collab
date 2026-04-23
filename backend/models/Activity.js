@@ -66,4 +66,4 @@ activitySchema.index({ workspace: 1, createdAt: -1 });
 activitySchema.index({ user: 1, createdAt: -1 });
 activitySchema.index({ entityType: 1, entityId: 1 });
 
-module.exports = mongoose.model("Activity", activitySchema);
+module.exports = mongoose.models.Activity || mongoose.model("Activity", activitySchema);

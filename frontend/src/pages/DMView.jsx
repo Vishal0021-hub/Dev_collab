@@ -4,6 +4,7 @@ import API from "../services/api";
 import { toast } from "react-hot-toast";
 import AppShell from "../components/AppShell";
 import NotificationBell from "../components/NotificationBell";
+import { useSocket } from "../context/SocketContext";
 
 const IconSend = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -33,13 +34,17 @@ export default function DMView() {
   const workspaceId = searchParams.get("workspaceId");
   const navigate = useNavigate();
 
-  const [recipient, setRecipient] = useState(null);
-  const [messages,  setMessages]  = useState([]);
-  const [content,   setContent]   = useState("");
-  const [loading,   setLoading]   = useState(true);
-  const [sending,   setSending]   = useState(false);
-  const bottomRef = useRef(null);
+  const [recipient,    setRecipient]    = useState(null);
+  const [messages,     setMessages]     = useState([]);
+  const [content,      setContent]      = useState("");
+  const [loading,      setLoading]      = useState(true);
+  const [sending,      setSending]      = useState(false);
+  const [recipTyping,  setRecipTyping]  = useState(false);
+  const bottomRef    = useRef(null);
+  const typingTimer  = useRef(null);
+  const typingTout   = useRef(null);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { socket } = useSocket();
 
   useEffect(() => {
     if (recipientId && workspaceId) {
@@ -47,6 +52,42 @@ export default function DMView() {
       fetchDMs();
     }
   }, [recipientId, workspaceId]);
+
+  /* ── Socket: join DM room + real-time events ── */
+  useEffect(() => {
+    if (!socket || !user._id || !recipientId) return;
+
+    socket.emit("join:dm", { myId: user._id, recipientId });
+
+    const onNewMsg = (msg) => {
+      setMessages(prev => {
+        if (prev.find(m => m._id === msg._id)) return prev;
+        return [...prev, msg];
+      });
+    };
+
+    const onTyping = ({ userId }) => {
+      if (userId === user._id) return;
+      setRecipTyping(true);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setRecipTyping(false), 3000);
+    };
+
+    const onStopTyping = ({ userId }) => {
+      if (userId === user._id) return;
+      setRecipTyping(false);
+    };
+
+    socket.on("dm:newMessage",    onNewMsg);
+    socket.on("user:typing:dm",   onTyping);
+    socket.on("user:stopTyping:dm", onStopTyping);
+
+    return () => {
+      socket.off("dm:newMessage",    onNewMsg);
+      socket.off("user:typing:dm",   onTyping);
+      socket.off("user:stopTyping:dm", onStopTyping);
+    };
+  }, [socket, recipientId, user._id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,13 +117,22 @@ export default function DMView() {
     }
   };
 
+  const handleTyping = (e) => {
+    setContent(e.target.value);
+    if (!socket) return;
+    socket.emit("typing:start:dm", { recipientId });
+    if (typingTout.current) clearTimeout(typingTout.current);
+    typingTout.current = setTimeout(() => socket.emit("typing:stop:dm", { recipientId }), 2000);
+  };
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!content.trim() || sending) return;
     setSending(true);
+    if (socket) socket.emit("typing:stop:dm", { recipientId });
     try {
       const res = await API.post(`/dm/${recipientId}`, { content: content.trim(), workspaceId });
-      setMessages(prev => [...prev, res.data]);
+      setMessages(prev => prev.find(m => m._id === res.data._id) ? prev : [...prev, res.data]);
       setContent("");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to send message");
@@ -166,12 +216,24 @@ export default function DMView() {
           )}
         </div>
 
+        {/* Typing indicator */}
+        {recipTyping && (
+          <div style={{ padding: "4px 24px", fontSize: 12, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", gap: 3 }}>
+              {[0,1,2].map(i => (
+                <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#0ea5e9", display: "inline-block", animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}/>
+              ))}
+            </div>
+            <span>{recipientName} is typing…</span>
+          </div>
+        )}
+
         {/* Input */}
-        <div style={{ padding: "16px 24px 20px", background: "rgba(10,13,22,0.6)", backdropFilter: "blur(20px)", flexShrink: 0 }}>
+        <div style={{ padding: "8px 24px 20px", background: "rgba(10,13,22,0.6)", backdropFilter: "blur(20px)", flexShrink: 0 }}>
           <form onSubmit={sendMessage} style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: "10px 14px" }}>
             <input
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={handleTyping}
               placeholder={`Message ${recipientName}`}
               style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#fff", fontSize: 14, fontFamily: "var(--font-body, Inter)" }}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(e); } }}

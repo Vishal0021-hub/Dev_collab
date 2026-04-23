@@ -58,7 +58,7 @@ function xssMiddleware(req, _res, next) {
 
 /* ── Rate limiters ───────────────────────────────────────────── */
 
-// Auth-specific: 10 requests per 15 minutes per IP
+// Auth-specific: 10 requests per 15 minutes per IP (production only)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -68,33 +68,34 @@ const authLimiter = rateLimit({
     status: 429,
     message: "Too many authentication attempts. Please try again in 15 minutes.",
   },
-  skip: () => process.env.NODE_ENV === "test",
+  // Skip in development & test so repeated testing doesn't trigger 429
+  skip: () => process.env.NODE_ENV !== "production",
 });
 
-// General API: 100 requests per 10 minutes per IP
+// General API: 200 requests per 15 minutes per IP (production only)
 const generalLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 100,
+  windowMs: 15 * 60 * 1000,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     status: 429,
     message: "Too many requests. Please slow down.",
   },
-  skip: () => process.env.NODE_ENV === "test",
+  skip: () => process.env.NODE_ENV !== "production",
 });
 
-// Invite-specific: same strict limit as auth
+// Invite-specific: lenient — invites are one-time actions
 const inviteLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     status: 429,
     message: "Too many invite requests. Please try again later.",
   },
-  skip: () => process.env.NODE_ENV === "test",
+  skip: () => process.env.NODE_ENV !== "production",
 });
 
 /* ── Register all security middleware on the app ─────────────── */

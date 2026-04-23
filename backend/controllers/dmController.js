@@ -1,14 +1,15 @@
 const DirectMessage = require("../models/DirectMessage");
 const User = require("../models/User");
+const { getIO } = require("../socket");
 
-// GET /api/dm/:recipientId?workspaceId=xxx  — fetch conversation
+// GET /api/dm/:recipientId?workspaceId=xxx
 exports.getDMs = async (req, res) => {
   try {
     const { recipientId } = req.params;
     const { workspaceId } = req.query;
-    const page = parseInt(req.query.page) || 1;
+    const page  = parseInt(req.query.page)  || 1;
     const limit = parseInt(req.query.limit) || 50;
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
 
     if (!workspaceId) return res.status(400).json({ message: "workspaceId is required" });
 
@@ -21,7 +22,7 @@ exports.getDMs = async (req, res) => {
     };
 
     const messages = await DirectMessage.find(query)
-      .populate("sender", "name avatar email")
+      .populate("sender",    "name avatar email")
       .populate("recipient", "name avatar email")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -33,7 +34,7 @@ exports.getDMs = async (req, res) => {
   }
 };
 
-// POST /api/dm/:recipientId  — send a DM
+// POST /api/dm/:recipientId
 exports.sendDM = async (req, res) => {
   try {
     const { recipientId } = req.params;
@@ -44,19 +45,24 @@ exports.sendDM = async (req, res) => {
     }
     if (!workspaceId) return res.status(400).json({ message: "workspaceId is required" });
 
-    // Verify recipient exists
     const recipient = await User.findById(recipientId);
     if (!recipient) return res.status(404).json({ message: "Recipient not found" });
 
     const message = await DirectMessage.create({
       content: content.trim(),
-      sender: req.user._id,
+      sender:    req.user._id,
       recipient: recipientId,
       workspace: workspaceId
     });
 
-    await message.populate("sender", "name avatar email");
+    await message.populate("sender",    "name avatar email");
     await message.populate("recipient", "name avatar email");
+
+    // ── Real-time: emit to the DM room (both users) ───────────
+    const dmKey = [req.user._id.toString(), recipientId].sort().join(":");
+    try {
+      getIO().to(`dm:${dmKey}`).emit("dm:newMessage", message.toObject());
+    } catch {}
 
     res.status(201).json(message);
   } catch (err) {

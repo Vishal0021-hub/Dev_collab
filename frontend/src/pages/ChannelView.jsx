@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import API from "../services/api";
 import { toast } from "react-hot-toast";
 import AppShell from "../components/AppShell";
 import NotificationBell from "../components/NotificationBell";
 import { MessageSkeleton } from "../components/Skeletons";
+import { useSocket } from "../context/SocketContext";
 
 const IconSend = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -40,13 +41,16 @@ export default function ChannelView() {
   const workspaceId = searchParams.get("workspaceId");
   const navigate = useNavigate();
 
-  const [channel,  setChannel]   = useState(null);
-  const [messages, setMessages]  = useState([]);
-  const [content,  setContent]   = useState("");
-  const [loading,  setLoading]   = useState(true);
-  const [sending,  setSending]   = useState(false);
+  const [channel,     setChannel]     = useState(null);
+  const [messages,    setMessages]    = useState([]);
+  const [content,     setContent]     = useState("");
+  const [loading,     setLoading]     = useState(true);
+  const [sending,     setSending]     = useState(false);
+  const [typingUsers, setTypingUsers] = useState({}); // { userId: name }
   const bottomRef = useRef(null);
+  const typingTimers = useRef({});
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { socket } = useSocket();
 
   useEffect(() => {
     if (channelId) {
@@ -54,6 +58,45 @@ export default function ChannelView() {
       fetchMessages();
     }
   }, [channelId]);
+
+  /* ── Socket: join/leave room + real-time events ── */
+  useEffect(() => {
+    if (!socket || !channelId) return;
+
+    socket.emit("join:channel", channelId);
+
+    const onNewMsg = (msg) => {
+      setMessages(prev => {
+        if (prev.find(m => m._id === msg._id)) return prev; // deduplicate
+        return [...prev, msg];
+      });
+    };
+
+    const onTyping = ({ userId, name }) => {
+      if (userId === user._id) return;
+      setTypingUsers(prev => ({ ...prev, [userId]: name }));
+      // Clear typing after 3s of no update
+      if (typingTimers.current[userId]) clearTimeout(typingTimers.current[userId]);
+      typingTimers.current[userId] = setTimeout(() => {
+        setTypingUsers(prev => { const n = { ...prev }; delete n[userId]; return n; });
+      }, 3000);
+    };
+
+    const onStopTyping = ({ userId }) => {
+      setTypingUsers(prev => { const n = { ...prev }; delete n[userId]; return n; });
+    };
+
+    socket.on("channel:newMessage", onNewMsg);
+    socket.on("user:typing",        onTyping);
+    socket.on("user:stopTyping",    onStopTyping);
+
+    return () => {
+      socket.emit("leave:channel", channelId);
+      socket.off("channel:newMessage", onNewMsg);
+      socket.off("user:typing",        onTyping);
+      socket.off("user:stopTyping",    onStopTyping);
+    };
+  }, [socket, channelId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -79,19 +122,32 @@ export default function ChannelView() {
     }
   };
 
+  const typingTimeout = useRef(null);
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!content.trim() || sending) return;
     setSending(true);
+    // Stop typing indicator
+    if (socket) socket.emit("typing:stop", { channelId });
     try {
       const res = await API.post(`/channels/${channelId}/messages`, { content: content.trim() });
-      setMessages(prev => [...prev, res.data]);
+      // Deduplicate: socket broadcast also delivers this message to us
+      setMessages(prev => prev.find(m => m._id === res.data._id) ? prev : [...prev, res.data]);
       setContent("");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to send message");
     } finally {
       setSending(false);
     }
+  };
+
+  const handleTyping = (e) => {
+    setContent(e.target.value);
+    if (!socket) return;
+    socket.emit("typing:start", { channelId });
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => socket.emit("typing:stop", { channelId }), 2000);
   };
 
   return (
@@ -154,14 +210,26 @@ export default function ChannelView() {
           )}
         </div>
 
+        {/* Typing indicator */}
+        {Object.values(typingUsers).length > 0 && (
+          <div style={{ padding: "4px 24px", fontSize: 12, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", gap: 3 }}>
+              {[0,1,2].map(i => (
+                <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#6366f1", display: "inline-block", animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}/>
+              ))}
+            </div>
+            <span>
+              {Object.values(typingUsers).join(", ")} {Object.values(typingUsers).length === 1 ? "is" : "are"} typing…
+            </span>
+          </div>
+        )}
+
         {/* Input */}
-        <div style={{ padding: "16px 24px 20px", background: "rgba(10,13,22,0.6)", backdropFilter: "blur(20px)", flexShrink: 0 }}>
-          <form onSubmit={sendMessage} style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: "10px 14px", transition: "border-color 0.2s" }}
-            onFocus={() => {}} onBlur={() => {}}
-          >
+        <div style={{ padding: "8px 24px 20px", background: "rgba(10,13,22,0.6)", backdropFilter: "blur(20px)", flexShrink: 0 }}>
+          <form onSubmit={sendMessage} style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: "10px 14px", transition: "border-color 0.2s" }}>
             <input
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={handleTyping}
               placeholder={`Message #${channel?.name || "channel"}`}
               style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#fff", fontSize: 14, fontFamily: "var(--font-body, Inter)" }}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(e); } }}
@@ -179,3 +247,4 @@ export default function ChannelView() {
     </AppShell>
   );
 }
+<style>{`@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-4px)} }`}</style>

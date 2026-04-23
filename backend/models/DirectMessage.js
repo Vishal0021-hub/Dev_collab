@@ -73,4 +73,4 @@ directMessageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });
 directMessageSchema.index({ workspace: 1, createdAt: -1 });
 directMessageSchema.index({ recipient: 1, readBy: 1 });
 
-module.exports = mongoose.model("DirectMessage", directMessageSchema);
+module.exports = mongoose.models.DirectMessage || mongoose.model("DirectMessage", directMessageSchema);
