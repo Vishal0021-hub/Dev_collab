@@ -1,11 +1,10 @@
 const Task      = require("../models/Task");
 const Board     = require("../models/Board");
-const User      = require("../models/User");
 const Project   = require("../models/Project");
 const Channel   = require("../models/Channel");
 const Message   = require("../models/Message");
 const Workspace = require("../models/Workspace");
-const { protect } = require("../middleware/authmiddleware");
+const mongoose  = require("mongoose");
 
 // ── Helper: regex search (case-insensitive) ───────────────────
 const rg = (q) => ({ $regex: q.trim(), $options: "i" });
@@ -20,6 +19,10 @@ exports.globalSearch = async (req, res) => {
     }
     if (!workspaceId) {
       return res.status(400).json({ message: "workspaceId is required" });
+    }
+    // Validate ObjectId to prevent Mongoose CastError
+    if (!mongoose.Types.ObjectId.isValid(workspaceId)) {
+      return res.status(400).json({ message: "Invalid workspaceId" });
     }
 
     const results = { tasks: [], messages: [], members: [] };

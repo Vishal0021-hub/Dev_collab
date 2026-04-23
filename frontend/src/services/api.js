@@ -3,10 +3,10 @@ import { toast } from "react-hot-toast";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
-  timeout: 15000, // 15-second request timeout
+  timeout: 15000,
 });
 
-/* ── Request interceptor: attach JWT ────────────────────────── */
+/* ── Request interceptor: attach JWT ── */
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -16,19 +16,16 @@ API.interceptors.request.use(
   (err) => Promise.reject(err)
 );
 
-/* ── Response interceptor ───────────────────────────────────── */
-let _401shown = false; // prevent duplicate "session expired" toasts
+/* ── Response interceptor ── */
+let _401shown = false;
 
 API.interceptors.response.use(
-  // ✅ Success — pass through
   (res) => res,
-
-  // ❌ Error handling
   (err) => {
     const status  = err.response?.status;
     const message = err.response?.data?.message;
 
-    // ── 401: session expired / invalid token ──────────────────
+    // 401: session expired
     if (status === 401) {
       if (!_401shown) {
         _401shown = true;
@@ -38,12 +35,11 @@ API.interceptors.response.use(
         setTimeout(() => { _401shown = false; }, 5000);
       }
       localStorage.removeItem("token");
-      // Small delay so the toast is readable before redirect
       setTimeout(() => { window.location.href = "/login"; }, 1200);
       return Promise.reject(err);
     }
 
-    // ── 403: permission denied ────────────────────────────────
+    // 403: permission denied
     if (status === 403) {
       toast.error(message || "You don't have permission to do that.", {
         id: "forbidden", duration: 4000,
@@ -51,13 +47,10 @@ API.interceptors.response.use(
       return Promise.reject(err);
     }
 
-    // ── 404: not found ────────────────────────────────────────
-    if (status === 404) {
-      // Don't toast — components handle 404s locally
-      return Promise.reject(err);
-    }
+    // 404: not found — components handle locally, no toast
+    if (status === 404) return Promise.reject(err);
 
-    // ── 429: rate limited ─────────────────────────────────────
+    // 429: rate limited
     if (status === 429) {
       toast.error("Too many requests — slow down a little! 🐢", {
         id: "rate-limit", duration: 5000,
@@ -65,25 +58,19 @@ API.interceptors.response.use(
       return Promise.reject(err);
     }
 
-    // ── 5xx: server error ─────────────────────────────────────
+    // 5xx: server error — show CLEAN generic message only
     if (status >= 500) {
-      toast.error(
-        message || "Server error — please try again in a moment.",
-        { id: `server-${status}`, duration: 5000 }
-      );
+      toast.error("Something went wrong on the server. Please try again.", {
+        id: `server-${status}`, duration: 4000,
+      });
       return Promise.reject(err);
     }
 
-    // ── Network error (no response at all) ────────────────────
-    if (!err.response) {
-      // ECONNABORTED = timeout
-      if (err.code === "ECONNABORTED") {
-        toast.error("Request timed out — check your connection.", {
-          id: "timeout", duration: 5000,
-        });
-      }
-      // Other network errors (server down, CORS, etc.)
-      // Don't show a toast — OfflineBanner handles it visually
+    // Network/timeout errors — OfflineBanner handles visually
+    if (!err.response && err.code === "ECONNABORTED") {
+      toast.error("Request timed out — check your connection.", {
+        id: "timeout", duration: 5000,
+      });
     }
 
     return Promise.reject(err);

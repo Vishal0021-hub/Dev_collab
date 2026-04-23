@@ -18,7 +18,7 @@ router.post("/", protect, isMember, createChannel);                      // POST
 router.delete("/:channelId", protect, isMember, deleteChannel);          // DELETE /api/channels/:channelId
 
 // Messages inside a channel
-router.get("/:channelId/messages", protect, isMember, getMessages);      // GET /api/channels/:channelId/messages
-router.post("/:channelId/messages", protect, isMember, sendMessage);     // POST /api/channels/:channelId/messages
+router.get("/:channelId/messages", protect, getMessages);      // GET  /api/channels/:channelId/messages
+router.post("/:channelId/messages", protect, sendMessage);     // POST /api/channels/:channelId/messages
 
 module.exports = router;
