@@ -1,13 +1,21 @@
 require("dotenv").config();
 const express = require("express");
+const http    = require("http");
+const { initSocket } = require("./socket");
 
-const app = express();
+const app        = express();
+const httpServer = http.createServer(app);
 
-// ── Body parser (must come before security middleware) ────────
+// ── Socket.IO (must init before routes) ───────────────────────
+const io = initSocket(httpServer);
+// Make io available on app for any middleware that may need it
+app.set("io", io);
+
+// ── Body parser ───────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// ── Security middleware (helmet, cors, sanitize, rate limits) ─
+// ── Security middleware ────────────────────────────────────────
 const { applySecurityMiddleware } = require("./middleware/securityMiddleware");
 applySecurityMiddleware(app);
 
@@ -71,6 +79,10 @@ app.use("/api/notifications", notificationRoutes);
 const snippetRoutes = require("./routes/snippetRoutes");
 app.use("/api/snippets", snippetRoutes);
 
+// ── Global Search ─────────────────────────────────────────────
+const searchRoutes = require("./routes/searchRoutes");
+app.use("/api/search", searchRoutes);
+
 // ── Global error handler ──────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err.stack || err.message);
@@ -81,6 +93,16 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`[server] Running on port ${PORT} (${process.env.NODE_ENV || "development"})`);
+});
+
+httpServer.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please kill the process using it or use a different port.`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', err);
+    process.exit(1);
+  }
 });
