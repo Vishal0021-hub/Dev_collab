@@ -62,9 +62,16 @@ function runJsSandbox(code) {
   // Strip TypeScript type annotations so TS runs as JS
   // (simple approach: remove ": type" patterns and "interface/type" blocks)
   const jsCode = code
-    .replace(/:\s*(string|number|boolean|any|void|never|unknown|object|null|undefined)(\[\])?/g, "")
-    .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}/gm, "")
-    .replace(/<[A-Z][a-zA-Z]*>/g, "");
+    // Remove multi-line interface and type definitions
+    .replace(/^(export\s+)?(interface|type)\s+\w+[\s\S]*?\{[\s\S]*?\}/gm, "")
+    // Remove single-line type aliases
+    .replace(/^(export\s+)?type\s+\w+\s*=[\s\S]*?;/gm, "")
+    // Remove type annotations on variables and function params
+    .replace(/:\s*(string|number|boolean|any|void|never|unknown|object|null|undefined|User|Task|Snippet)(\[\])?/gi, "")
+    // Remove access modifiers and 'readonly'
+    .replace(/\b(public|private|protected|readonly)\b\s+/g, "")
+    // Remove generics <T>
+    .replace(/<[A-Z][a-zA-Z0-9]*>/g, "");
 
   return new Promise((resolve) => {
     const logs = [], errs = [];

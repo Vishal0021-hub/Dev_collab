@@ -51,9 +51,11 @@ function stripXss(value) {
 }
 
 function xssMiddleware(req, _res, next) {
-  // Only sanitize body/params — never mutate req.query
-  if (req.body)   req.body   = stripXss(req.body);
-  if (req.params) req.params = stripXss(req.params);
+  /**
+   * DISABLED: Aggressive stripping of < > and javascript: tokens
+   * breaks code snippets. In a developer platform, we must allow
+   * these characters. Frontend must handle rendering safely.
+   */
   next();
 }
 
@@ -112,8 +114,18 @@ function applySecurityMiddleware(app) {
   //    Disable CSP in development so Vite's hot-reload inline scripts aren't blocked.
   app.use(
     helmet({
-      contentSecurityPolicy:    process.env.NODE_ENV === "production",
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:"],
+          "frame-src": ["'self'", "blob:"],
+          "img-src": ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+          "connect-src": ["'self'", "https://api.cloudinary.com", "wss://*", "ws://*"],
+        },
+      },
       crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     })
   );
 

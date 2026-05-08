@@ -11,7 +11,7 @@ const { initSocket } = require("./socket");
 function validateEnv() {
   const REQUIRED = [
     "MONGO_URI",
-    "JWT_SECRET",        // your .env uses JWT_SECRET (not JWT_ACCESS_SECRET)
+    "JWT_SECRET",        // or JWT_ACCESS_SECRET
     "INVITE_SECRET",
   ];
 
@@ -49,9 +49,9 @@ const httpServer = http.createServer(app);
 const io = initSocket(httpServer);
 app.set("io", io);  // make io available to controllers via req.app.get("io")
 
-/* ── Body parsers (10 kb limit per spec) ───────────────────────*/
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+/* ── Body parsers (10mb limit for code snippets) ───────────────*/
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 /* ── HTTP Parameter Pollution protection ────────────────────────*/
 // Must come AFTER body parsers, BEFORE routes
