@@ -1,18 +1,14 @@
 const express = require("express");
 const router  = express.Router();
 
-const { protect }    = require("../middleware/authmiddleware");
-const { authorize }  = require("../middleware/roleMiddleware");
+const { protect }   = require("../middleware/authmiddleware");
+const { isMember }  = require("../middleware/roleMiddleware");
+const { getAnalytics } = require("../controllers/analyticsController");
 
-// ── Placeholder — full implementation coming in Batch 3 ──────────
-// GET /api/analytics/workspace/:workspaceId?range=7d|30d|90d
-router.get(
-  "/workspace/:workspaceId",
-  protect,
-  authorize(["owner", "admin"]),
-  (_req, res) => {
-    res.status(503).json({ message: "Analytics engine not yet implemented — coming in Phase 3 Batch 3" });
-  }
-);
+/**
+ * GET /api/analytics/workspace/:workspaceId?range=7d|30d|90d
+ * Any workspace member can view analytics (isMember guard).
+ */
+router.get("/workspace/:workspaceId", protect, isMember, getAnalytics);
 
 module.exports = router;

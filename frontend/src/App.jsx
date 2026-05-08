@@ -11,6 +11,7 @@ import Home        from "./pages/Home";
 import JoinPage    from "./pages/JoinPage";
 import ChannelView from "./pages/ChannelView";
 import DMView      from "./pages/DMView";
+import Analytics   from "./pages/Analytics";
 import { NotFound, Forbidden, OfflineBanner } from "./pages/ErrorPages";
 
 import CustomCursor  from "./components/CustomCursor";
@@ -84,6 +85,7 @@ function App() {
               <Route path="/boards/:projectId"     element={<ErrorBoundary><Board /></ErrorBoundary>} />
               <Route path="/channels/:channelId"   element={<ErrorBoundary><ChannelView /></ErrorBoundary>} />
               <Route path="/dm/:recipientId"       element={<ErrorBoundary><DMView /></ErrorBoundary>} />
+              <Route path="/analytics/:workspaceId" element={<ErrorBoundary><Analytics /></ErrorBoundary>} />
 
               {/* 404 fallback */}
               <Route path="*" element={<NotFound />} />
