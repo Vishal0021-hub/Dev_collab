@@ -1,89 +1,135 @@
 require("dotenv").config();
 const express = require("express");
 const http    = require("http");
+const hpp     = require("hpp");
 const { initSocket } = require("./socket");
 
+/* ── Environment validator ──────────────────────────────────────
+   Call before anything else so the process exits fast with a clear
+   error message if a required secret is absent.
+   ─────────────────────────────────────────────────────────────── */
+function validateEnv() {
+  const REQUIRED = [
+    "MONGO_URI",
+    "JWT_SECRET",        // your .env uses JWT_SECRET (not JWT_ACCESS_SECRET)
+    "INVITE_SECRET",
+  ];
+
+  // These are warned about but don't hard-stop in dev (Cloudinary / email may be optional)
+  const WARN_ONLY = [
+    "CLIENT_URL",
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
+  ];
+
+  const missing = REQUIRED.filter(k => !process.env[k]);
+  if (missing.length) {
+    console.error("\n[ENV] ❌  Missing required environment variables:");
+    missing.forEach(k => console.error(`       • ${k}`));
+    console.error("       Add them to backend/.env and restart.\n");
+    process.exit(1);
+  }
+
+  const warnMissing = WARN_ONLY.filter(k => !process.env[k]);
+  if (warnMissing.length) {
+    console.warn("\n[ENV] ⚠️  Optional env vars not set (some features may be disabled):");
+    warnMissing.forEach(k => console.warn(`       • ${k}`));
+    console.warn("");
+  }
+}
+
+validateEnv();
+
+/* ── Express + HTTP server ──────────────────────────────────────*/
 const app        = express();
 const httpServer = http.createServer(app);
 
-// ── Socket.IO (must init before routes) ───────────────────────
+/* ── Socket.IO (must init before routes) ───────────────────────*/
 const io = initSocket(httpServer);
-// Make io available on app for any middleware that may need it
-app.set("io", io);
+app.set("io", io);  // make io available to controllers via req.app.get("io")
 
-// ── Body parser ───────────────────────────────────────────────
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+/* ── Body parsers (10 kb limit per spec) ───────────────────────*/
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
-// ── Security middleware ────────────────────────────────────────
-const { applySecurityMiddleware } = require("./middleware/securityMiddleware");
+/* ── HTTP Parameter Pollution protection ────────────────────────*/
+// Must come AFTER body parsers, BEFORE routes
+app.use(hpp());
+
+/* ── Security middleware (helmet, cors, sanitizers, general rate-limit, morgan) ── */
+const { applySecurityMiddleware, authLimiter } = require("./middleware/securityMiddleware");
 applySecurityMiddleware(app);
 
-// ── Database ──────────────────────────────────────────────────
+/* ── Database ──────────────────────────────────────────────────*/
 const ConnectDB = require("./config/db");
 ConnectDB();
 
-// ── Verify SMTP on startup ────────────────────────────────────
+/* ── SMTP verification (non-blocking) ─────────────────────────*/
 const { verifySmtp } = require("./utils/emailService");
 verifySmtp();
 
 const { protect } = require("./middleware/authmiddleware");
 
-app.get("/", (req, res) => res.send("DevSpace API running"));
+app.get("/", (req, res) => res.send("DevSpace API running ✓"));
 
-// ── Auth ──────────────────────────────────────────────────────
+/* ── Auth routes — auth-specific rate limiter (10 req / 15 min) */
 const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 
 app.get("/api/protected", protect, (req, res) => {
   res.json({ message: "Protected route accessed", user: req.user });
 });
 
-// ── Workspaces (includes /dashboard) ─────────────────────────
+/* ── Workspaces ─────────────────────────────────────────────── */
 const workspaceRoutes = require("./routes/workspaceRoutes");
 app.use("/api/workspaces", workspaceRoutes);
 
-// ── Projects ──────────────────────────────────────────────────
+/* ── Projects ────────────────────────────────────────────────── */
 const projectRoutes = require("./routes/projectRoutes");
 app.use("/api/projects", projectRoutes);
 
-// ── Boards ────────────────────────────────────────────────────
+/* ── Boards ──────────────────────────────────────────────────── */
 const boardRoutes = require("./routes/boardRoutes");
 app.use("/api/boards", boardRoutes);
 
-// ── Tasks (includes /status + /attachments) ───────────────────
+/* ── Tasks ───────────────────────────────────────────────────── */
 const taskRoutes = require("./routes/taskRoutes");
 app.use("/api/tasks", taskRoutes);
 
-// ── Task Attachments (Cloudinary upload/delete) ───────────────
+/* ── Task Attachments (Cloudinary upload/delete) ─────────────── */
 const attachmentRoutes = require("./routes/attachmentRoutes");
 app.use("/api/tasks", attachmentRoutes);
 
-// ── Activity feed ─────────────────────────────────────────────
+/* ── Activity feed ───────────────────────────────────────────── */
 const activityRoutes = require("./routes/activityRoutes");
 app.use("/api/activities", activityRoutes);
 
-// ── Channels + Messages ───────────────────────────────────────
+/* ── Channels + Messages ─────────────────────────────────────── */
 const channelRoutes = require("./routes/channelRoutes");
 app.use("/api/channels", channelRoutes);
 
-// ── Direct Messages ───────────────────────────────────────────
+/* ── Direct Messages ─────────────────────────────────────────── */
 const dmRoutes = require("./routes/dmRoutes");
 app.use("/api/dm", dmRoutes);
 
-// ── Notifications ─────────────────────────────────────────────
+/* ── Notifications ───────────────────────────────────────────── */
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/api/notifications", notificationRoutes);
 
-// ── Code Snippets ──────────────────────────────────────────────
+/* ── Code Snippets ───────────────────────────────────────────── */
 const snippetRoutes = require("./routes/snippetRoutes");
 app.use("/api/snippets", snippetRoutes);
 
-// ── Global Search ─────────────────────────────────────────────
+/* ── Global Search ───────────────────────────────────────────── */
 const searchRoutes = require("./routes/searchRoutes");
 app.use("/api/search", searchRoutes);
 
-// ── Global error handler ──────────────────────────────────────
+/* ── Analytics ───────────────────────────────────────────────── */
+const analyticsRoutes = require("./routes/analyticsRoutes");
+app.use("/api/analytics", analyticsRoutes);
+
+/* ── Global error handler ────────────────────────────────────── */
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err.stack || err.message);
   res.status(err.status || 500).json({
@@ -92,17 +138,18 @@ app.use((err, req, res, next) => {
   });
 });
 
+/* ── Start ───────────────────────────────────────────────────── */
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
-  console.log(`[server] Running on port ${PORT} (${process.env.NODE_ENV || "development"})`);
+  console.log(`[server] ✓ Running on port ${PORT} (${process.env.NODE_ENV || "development"})`);
 });
 
-httpServer.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Please kill the process using it or use a different port.`);
+httpServer.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`[server] ✗ Port ${PORT} is already in use. Kill the process using it or change PORT in .env.`);
     process.exit(1);
   } else {
-    console.error('Server error:', err);
+    console.error("[server] ✗ Fatal error:", err);
     process.exit(1);
   }
 });

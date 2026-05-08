@@ -1,5 +1,5 @@
 const Workspace = require("../models/workspace");
-const User= require("../models/User");
+const User = require("../models/User");
 const { logActivity } = require("../utils/activityLogger");
 
 
@@ -77,17 +77,17 @@ exports.inviteToWorkspace = async (req, res) => {
 
     // Build invite link
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const inviteLink  = `${frontendUrl}/join/${token}`;
+    const inviteLink = `${frontendUrl}/join/${token}`;
 
     // Send invitation email (gracefully skip if SMTP not configured)
     let emailSent = false;
     const inviter = await User.findById(req.user._id);
     try {
       await sendInviteEmail({
-        toEmail:       email,
-        inviterName:   inviter?.name || "A team member",
+        toEmail: email,
+        inviterName: inviter?.name || "A team member",
         workspaceName: workspace.name,
-        role:          inviteRole,
+        role: inviteRole,
         inviteLink,
       });
       emailSent = true;
@@ -102,7 +102,7 @@ exports.inviteToWorkspace = async (req, res) => {
     });
 
     res.json({
-      message:   emailSent ? "Invite sent via email" : "Invite created (email not sent — check SMTP config)",
+      message: emailSent ? "Invite sent via email" : "Invite created (email not sent — check SMTP config)",
       inviteLink,
       emailSent
     });
@@ -169,7 +169,7 @@ exports.getWorkspaceMembers = async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const workspace = await Workspace.findById(workspaceId).populate("members.userId", "name email avatar");
-    
+
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
     }
@@ -197,9 +197,9 @@ exports.changeRole = async (req, res) => {
     await workspace.save();
 
     await logActivity(workspaceId, req.user._id, "role_changed", {
-        oldRole,
-        newRole: role,
-        assignedToName: member.userId.name || member.userId.toString()
+      oldRole,
+      newRole: role,
+      assignedToName: member.userId.name || member.userId.toString()
     });
 
     res.json({ message: "Role updated", workspace });
@@ -235,11 +235,11 @@ exports.getDashboard = async (req, res) => {
 
     // Task counts by status
     const taskCounts = {
-      todo:       allTasks.filter(t => t.status === "todo").length,
+      todo: allTasks.filter(t => t.status === "todo").length,
       inprogress: allTasks.filter(t => t.status === "inprogress").length,
-      review:     allTasks.filter(t => t.status === "review").length,
-      done:       allTasks.filter(t => t.status === "done").length,
-      total:      allTasks.length
+      review: allTasks.filter(t => t.status === "review").length,
+      done: allTasks.filter(t => t.status === "done").length,
+      total: allTasks.length
     };
 
     // Recent 10 activities
@@ -250,11 +250,11 @@ exports.getDashboard = async (req, res) => {
 
     // Member list with roles
     const members = workspace.members.map(m => ({
-      _id:      m.userId?._id,
-      name:     m.userId?.name,
-      email:    m.userId?.email,
-      avatar:   m.userId?.avatar,
-      role:     m.role,
+      _id: m.userId?._id,
+      name: m.userId?.name,
+      email: m.userId?.email,
+      avatar: m.userId?.avatar,
+      role: m.role,
       joinedAt: m.joinedAt
     }));
 

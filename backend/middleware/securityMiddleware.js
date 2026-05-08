@@ -1,20 +1,21 @@
-const helmet      = require("helmet");
-const cors        = require("cors");
-const rateLimit   = require("express-rate-limit");
-const morgan      = require("morgan");
+const helmet    = require("helmet");
+const cors      = require("cors");
+const rateLimit = require("express-rate-limit");
+const morgan    = require("morgan");
 
 /* ── CORS ────────────────────────────────────────────────────── */
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  origin:         process.env.CLIENT_URL || "http://localhost:5173",
+  credentials:    true,
+  methods:        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-/* ── Safe NoSQL injection sanitizer ─────────────────────────── */
-// express-mongo-sanitize v2 tries to write req.query which is a read-only
-// getter in Node 18+. We implement the same protection manually to avoid
-// the TypeError crash.
+/* ── Safe NoSQL injection sanitizer ─────────────────────────────
+   express-mongo-sanitize v2 tries to write req.query which is a
+   read-only getter in Node 18+. We implement the same protection
+   manually to avoid the TypeError crash.
+   ─────────────────────────────────────────────────────────────── */
 function sanitizeObject(obj) {
   if (!obj || typeof obj !== "object") return obj;
   for (const key of Object.keys(obj)) {
@@ -28,16 +29,16 @@ function sanitizeObject(obj) {
 }
 
 function mongoSanitizeMiddleware(req, _res, next) {
-  // Sanitize body and params (safe to mutate)
+  // Sanitize body and params only — req.query is read-only in Node 18+
   if (req.body)   sanitizeObject(req.body);
   if (req.params) sanitizeObject(req.params);
-  // Do NOT touch req.query — it is a read-only getter in Node 18+
   next();
 }
 
-/* ── Safe XSS sanitizer ──────────────────────────────────────── */
-// xss-clean is deprecated and may have the same req.query mutation issue.
-// We implement a lightweight string-level strip instead.
+/* ── Safe XSS sanitizer ──────────────────────────────────────────
+   xss-clean is deprecated and has the same req.query mutation issue.
+   Lightweight string-level strip that avoids that.
+   ─────────────────────────────────────────────────────────────── */
 const XSS_PATTERN = /<[^>]*>|javascript:/gi;
 
 function stripXss(value) {
@@ -56,36 +57,43 @@ function xssMiddleware(req, _res, next) {
   next();
 }
 
-/* ── Rate limiters ───────────────────────────────────────────── */
+/* ── Rate limiters ────────────────────────────────────────────── */
 
-// Auth-specific: 10 requests per 15 minutes per IP (production only)
+/**
+ * Auth-specific: 10 requests per 15 minutes per IP.
+ * Exported so server.js can apply it specifically to /api/auth/*.
+ * Skip in development & test so repeated testing doesn't trigger 429.
+ */
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000,   // 15 minutes
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     status: 429,
-    message: "Too many authentication attempts. Please try again in 15 minutes.",
+    message: "Too many requests from this IP, please try again later",
   },
-  // Skip in development & test so repeated testing doesn't trigger 429
   skip: () => process.env.NODE_ENV !== "production",
 });
 
-// General API: 200 requests per 15 minutes per IP (production only)
+/**
+ * General API: 100 requests per 10 minutes per IP (per spec).
+ */
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
+  windowMs: 10 * 60 * 1000,   // 10 minutes (spec says 10 min for general)
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     status: 429,
-    message: "Too many requests. Please slow down.",
+    message: "Too many requests from this IP, please try again later",
   },
   skip: () => process.env.NODE_ENV !== "production",
 });
 
-// Invite-specific: lenient — invites are one-time actions
+/**
+ * Invite-specific: lenient, invites are one-time actions.
+ */
 const inviteLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -98,13 +106,13 @@ const inviteLimiter = rateLimit({
   skip: () => process.env.NODE_ENV !== "production",
 });
 
-/* ── Register all security middleware on the app ─────────────── */
+/* ── Register security middleware on the app ─────────────────── */
 function applySecurityMiddleware(app) {
   // 1. Secure HTTP headers
   //    Disable CSP in development so Vite's hot-reload inline scripts aren't blocked.
   app.use(
     helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === "production",
+      contentSecurityPolicy:    process.env.NODE_ENV === "production",
       crossOriginEmbedderPolicy: false,
     })
   );
@@ -118,7 +126,7 @@ function applySecurityMiddleware(app) {
   // 4. XSS sanitization (custom — avoids req.query mutation crash)
   app.use(xssMiddleware);
 
-  // 5. General API rate limit
+  // 5. General API rate limit (100 req / 10 min)
   app.use("/api", generalLimiter);
 
   // 6. Request logger (development only)
