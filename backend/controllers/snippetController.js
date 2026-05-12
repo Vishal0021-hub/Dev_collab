@@ -1,3 +1,4 @@
+const axios       = require("axios");
 const CodeSnippet = require("../models/CodeSnippet");
 const Message     = require("../models/Message");
 const Channel     = require("../models/Channel");
@@ -33,9 +34,18 @@ exports.createSnippet = async (req, res) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     // Resolve workspaceId
-    const workspaceId = wIdOverride || await getWorkspaceIdFromTask(taskId);
+    let workspaceId = wIdOverride;
     if (!workspaceId) {
-      return res.status(400).json({ message: "Could not resolve workspaceId from task" });
+      try {
+        workspaceId = await getWorkspaceIdFromTask(taskId);
+      } catch (err) {
+        console.error("Workspace resolution error:", err);
+        return res.status(500).json({ message: "Failed to resolve workspace for task" });
+      }
+    }
+
+    if (!workspaceId) {
+      return res.status(400).json({ message: "Task must belong to a valid project/workspace" });
     }
 
     const snippet = await CodeSnippet.create({
@@ -49,6 +59,19 @@ exports.createSnippet = async (req, res) => {
     });
 
     await snippet.populate("createdBy", "name avatar");
+
+    // ── Emit to workspace so other clients with this taskId open can sync ──
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`ws:${workspaceId}`).emit("snippet:created", {
+          taskId,
+          snippetId: snippet._id,
+          title: snippet.title,
+          language: snippet.language
+        });
+      }
+    } catch (err) { console.error("Socket emit error on snippet create", err); }
 
     res.status(201).json(snippet);
   } catch (err) {
@@ -104,33 +127,35 @@ exports.getSnippet = async (req, res) => {
 exports.updateSnippet = async (req, res) => {
   try {
     const { id } = req.params;
-    const { code, title, language } = req.body;
+    const { code, title, language, silent } = req.body;
 
     const snippet = await CodeSnippet.findById(id);
     if (!snippet) return res.status(404).json({ message: "Snippet not found" });
 
-    // Build the snapshot from the current state BEFORE overwriting
-    const currentSnapshot = {
-      code:    snippet.code,
-      version: snippet.version,
-      savedBy: req.user._id,
-      savedAt: new Date(),
-    };
+    // Only bump version and create snapshot if NOT a silent auto-save
+    if (!silent) {
+      // Build the snapshot from the current state BEFORE overwriting
+      const currentSnapshot = {
+        code:    snippet.code,
+        version: snippet.version,
+        savedBy: req.user._id,
+        savedAt: new Date(),
+      };
 
-    // Enforce max-10 snapshots — drop the oldest
-    if (snippet.snapshots.length >= 10) {
-      snippet.snapshots.shift();
+      // Enforce max-10 snapshots — drop the oldest
+      if (snippet.snapshots.length >= 10) {
+        snippet.snapshots.shift();
+      }
+      snippet.snapshots.push(currentSnapshot);
+      snippet.version += 1;
     }
-    snippet.snapshots.push(currentSnapshot);
 
     // Apply updates
     if (code      !== undefined) snippet.code     = code;
-    if (title     !== undefined) snippet.title    = title.trim();
+    if (title     !== undefined) snippet.title    = title?.trim();
     if (language  !== undefined) snippet.language = language;
 
-    snippet.version   += 1;
-    snippet.updatedAt  = new Date();
-
+    snippet.updatedAt = new Date();
     await snippet.save();
 
     // ── Emit snippet:saved via Socket.IO ──────────────────────
@@ -327,5 +352,66 @@ exports.deleteSnippet = async (req, res) => {
     res.json({ message: "Snippet deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   POST /api/snippets/execute
+   Proxy code execution to Judge0.
+   ═══════════════════════════════════════════════════════════════ */
+exports.executeSnippet = async (req, res) => {
+  try {
+    const { code, language } = req.body;
+    if (!code) return res.status(400).json({ message: "Code is required" });
+
+    // Judge0 Language IDs
+    const LANG_MAP = {
+      javascript: 93, // Node.js 18.x
+      python:     71, // Python 3
+      java:       62, // Java
+      c:          50, // C
+      cpp:        54, // C++
+      go:         60, // Go
+      rust:       73, // Rust
+      bash:       46, // Bash
+    };
+
+    const language_id = LANG_MAP[language] || 93; // default JS
+    const apiUrl = process.env.JUDGE0_API_URL || "https://ce.judge0.com";
+    const apiKey = process.env.JUDGE0_API_KEY;
+
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) headers["X-RapidAPI-Key"] = apiKey;
+
+    // 1. Submit code
+    const submitRes = await axios.post(
+      `${apiUrl}/submissions?base64_encoded=false&wait=true`,
+      { source_code: code, language_id },
+      { headers }
+    );
+
+    const data = submitRes.data;
+
+    // Output formatting
+    const isError = data.status?.id >= 4;
+    const stdout = data.stdout || "";
+    const stderr = data.stderr || data.compile_output || data.message || (isError && !data.stdout ? data.status?.description : "");
+
+    res.json({
+      stdout,
+      stderr,
+      exitCode: isError ? 1 : 0,
+      time: data.time || "0.000",
+      memory: data.memory,
+      status: data.status?.description,
+    });
+  } catch (err) {
+    console.error("[Judge0 Execution Error]:", err.message);
+    const data = err.response?.data || {};
+    
+    // Cloudflare returns an object with a 'title' field on 5xx errors
+    const errorMsg = data.message || data.title || "Execution failed. The Judge0 service might be rate-limited or unavailable.";
+    
+    res.status(500).json({ message: errorMsg });
   }
 };
