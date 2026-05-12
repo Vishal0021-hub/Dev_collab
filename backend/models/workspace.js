@@ -28,7 +28,19 @@ const workspaceSchema = new mongoose.Schema(
           default: Date.now
         }
       }
-    ]
+    ],
+
+    /* ── GitHub Repo Link ────────────────────────────────────── */
+    github: {
+      repoOwner:    { type: String },
+      repoName:     { type: String },
+      repoFullName: { type: String },
+      repoUrl:      { type: String },
+      defaultBranch: { type: String, default: "main" },
+      webhookId:    { type: Number },          // GitHub webhook ID for deletion
+      linkedBy:     { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      linkedAt:     { type: Date },
+    },
   },
   { timestamps: true }
 );

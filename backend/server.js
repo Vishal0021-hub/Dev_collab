@@ -21,6 +21,11 @@ function validateEnv() {
     "CLOUDINARY_CLOUD_NAME",
     "CLOUDINARY_API_KEY",
     "CLOUDINARY_API_SECRET",
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET",
+    "GITHUB_WEBHOOK_SECRET",
+    "GITHUB_ENCRYPTION_KEY",
+    "SERVER_URL",
   ];
 
   const missing = REQUIRED.filter(k => !process.env[k]);
@@ -48,6 +53,14 @@ const httpServer = http.createServer(app);
 /* ── Socket.IO (must init before routes) ───────────────────────*/
 const io = initSocket(httpServer);
 app.set("io", io);  // make io available to controllers via req.app.get("io")
+
+/* ── GitHub Webhook — MUST be before express.json() ────────────
+   express.raw() is applied at route level inside githubWebhook.js
+   but we register the route here early so Express sees it before
+   the global body-parser middleware that would consume req.body.
+   ─────────────────────────────────────────────────────────────── */
+const githubWebhookRoute = require("./routes/githubWebhook");
+app.use("/api/github", githubWebhookRoute);
 
 /* ── Body parsers (10mb limit for code snippets) ───────────────*/
 app.use(express.json({ limit: "10mb" }));
@@ -128,6 +141,10 @@ app.use("/api/search", searchRoutes);
 /* ── Analytics ───────────────────────────────────────────────── */
 const analyticsRoutes = require("./routes/analyticsRoutes");
 app.use("/api/analytics", analyticsRoutes);
+
+/* ── GitHub OAuth + Repo management ─────────────────────────── */
+const githubRoutes = require("./routes/githubRoutes");
+app.use("/api/github", githubRoutes);
 
 /* ── Global error handler ────────────────────────────────────── */
 app.use((err, req, res, next) => {

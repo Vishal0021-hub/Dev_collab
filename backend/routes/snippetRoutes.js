@@ -10,6 +10,7 @@ const {
   restoreSnapshot,
   shareSnippet,
   deleteSnippet,
+  executeSnippet,
 } = require("../controllers/snippetController");
 
 const { protect } = require("../middleware/authmiddleware");
@@ -19,6 +20,9 @@ const { protect } = require("../middleware/authmiddleware");
    Static paths (/task/:taskId) must be registered BEFORE dynamic
    paths (/:id) to avoid Express treating "task" as an :id value.
    ────────────────────────────────────────────────────────────── */
+
+// POST /api/snippets/execute — execute code via Judge0 proxy
+router.post("/execute", protect, executeSnippet);
 
 // POST /api/snippets — create snippet (taskId in body, workspaceId auto-derived)
 router.post("/", protect, createSnippet);

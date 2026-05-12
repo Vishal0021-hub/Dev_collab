@@ -25,6 +25,15 @@ const userschema = new mongoose.Schema(
     avatar: {
       type: String,
     },
+
+    /* ── GitHub OAuth connection ─────────────────────────────── */
+    github: {
+      accessToken: { type: String },   // AES-256-CBC encrypted
+      tokenIv:     { type: String },   // IV for decryption
+      login:       { type: String },   // GitHub username
+      avatarUrl:   { type: String },
+      connectedAt: { type: Date },
+    },
   },
   {
     timestamps: true,
