@@ -5,8 +5,8 @@ const SocketContext = createContext(null);
 
 /* ── Provider — wraps entire app in App.jsx ─────────────────── */
 export function SocketProvider({ children }) {
-  const [socket,      setSocket]      = useState(null);
-  const [connected,   setConnected]   = useState(false);
+  const [socket, setSocket] = useState(null);
+  const [connected, setConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(new Set()); // Set<userId>
   const socketRef = useRef(null);
 
@@ -17,10 +17,10 @@ export function SocketProvider({ children }) {
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
     const s = io(SOCKET_URL, {
-      auth:       { token },
-      transports: ["websocket", "polling"],
+      auth: { token },
+      // default: try polling then upgrade to websocket (more robust)
       reconnectionAttempts: 5,
-      reconnectionDelay:    1000,
+      reconnectionDelay: 1000,
     });
 
     s.on("connect", () => {
@@ -38,7 +38,7 @@ export function SocketProvider({ children }) {
     });
 
     // ── Online presence ──
-    s.on("user:online",  ({ userId }) => setOnlineUsers(prev => new Set([...prev, userId])));
+    s.on("user:online", ({ userId }) => setOnlineUsers(prev => new Set([...prev, userId])));
     s.on("user:offline", ({ userId }) => setOnlineUsers(prev => {
       const next = new Set(prev);
       next.delete(userId);

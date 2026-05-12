@@ -1,12 +1,159 @@
-const Task  = require("../models/Task");
-const Board = require("../models/Board");
-const User  = require("../models/User");
+const axios  = require("axios");
+const Task   = require("../models/Task");
+const Board  = require("../models/Board");
+const User   = require("../models/User");
+const Project    = require("../models/Project");
+const Workspace  = require("../models/workspace");
+const Comment    = require("../models/Message");   // re-use Message for task comments if exists
 const { logActivity } = require("../utils/activityLogger");
-const { getIO } = require("../socket");
+const { getIO }       = require("../socket");
+const { decrypt }     = require("../utils/encryption");
 
 const emitToWs = (workspaceId, event, payload) => {
   try { getIO().to(`ws:${workspaceId}`).emit(event, payload); } catch {}
 };
+
+/* ── GitHub API helper ──────────────────────────────────────── */
+const GH_HEADERS = (token) => ({
+  Authorization: `Bearer ${token}`,
+  "User-Agent":  "DevSpace",
+  Accept:        "application/vnd.github+json",
+});
+
+/* ── Slugify for branch names ───────────────────────────────── */
+function slugify(text) {
+  return (text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 40);
+}
+
+/* ── Resolve workspaceId from task ──────────────────────────── */
+async function getWorkspaceForTask(task) {
+  const board = await Board.findById(task.board).populate("project");
+  if (!board?.project) return null;
+  return {
+    workspaceId: board.project.workspace?.toString(),
+    board,
+  };
+}
+
+/* ── Auto-branch creation (Item 3) ─────────────────────────── */
+async function tryCreateBranch(task, req, workspaceId) {
+  try {
+    const user = await User.findById(req.user._id).select("github");
+    if (!user?.github?.accessToken) return;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace?.github?.repoOwner) return;
+
+    const token  = decrypt(user.github.accessToken, user.github.tokenIv);
+    const owner  = workspace.github.repoOwner;
+    const repo   = workspace.github.repoName;
+    const base   = workspace.github.defaultBranch || "main";
+    const branchName = `feature/task-${task._id.toString().slice(-6)}-${slugify(task.title)}`;
+
+    // Get base branch SHA
+    const refRes = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${base}`,
+      { headers: GH_HEADERS(token) }
+    );
+    const headSha = refRes.data.object.sha;
+
+    // Create branch
+    await axios.post(
+      `https://api.github.com/repos/${owner}/${repo}/git/refs`,
+      { ref: `refs/heads/${branchName}`, sha: headSha },
+      { headers: GH_HEADERS(token) }
+    );
+
+    const branchUrl = `https://github.com/${owner}/${repo}/tree/${branchName}`;
+
+    task.github = task.github || {};
+    task.github.branch          = branchName;
+    task.github.branchUrl       = branchUrl;
+    task.github.branchCreatedAt = new Date();
+    await task.save();
+
+    await logActivity(
+      workspaceId,
+      req.user._id,
+      "github_branch_created",
+      { branch: branchName },
+      { entityType: "task", entityId: task._id }
+    );
+
+    emitToWs(workspaceId, "github:sync", {
+      taskId:    task._id.toString(),
+      github:    task.github,
+    });
+
+    console.log(`[GitHub] Branch created: ${branchName}`);
+  } catch (err) {
+    // Non-fatal — just warn
+    console.warn("[GitHub] Branch creation failed (non-fatal):", err.response?.data?.message || err.message);
+  }
+}
+
+/* ── Auto-PR creation (Item 5) ─────────────────────────────── */
+async function tryOpenPR(task, req, workspaceId) {
+  try {
+    const user = await User.findById(req.user._id).select("github");
+    if (!user?.github?.accessToken) return;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace?.github?.repoOwner) return;
+
+    const token  = decrypt(user.github.accessToken, user.github.tokenIv);
+    const owner  = workspace.github.repoOwner;
+    const repo   = workspace.github.repoName;
+    const base   = workspace.github.defaultBranch || "main";
+
+    const prRes = await axios.post(
+      `https://api.github.com/repos/${owner}/${repo}/pulls`,
+      {
+        title: task.title,
+        body:  `## ${task.title}\n\n${task.description || ""}\n\n---\n*Auto-created by DevSpace*`,
+        head:  task.github.branch,
+        base,
+      },
+      { headers: GH_HEADERS(token) }
+    );
+
+    const pr = prRes.data;
+    task.github.pr = {
+      number:   pr.number,
+      title:    pr.title,
+      url:      pr.html_url,
+      state:    "open",
+      openedAt: new Date(),
+    };
+    await task.save();
+
+    await logActivity(
+      workspaceId,
+      req.user._id,
+      "github_pr_opened",
+      { prNumber: pr.number, prUrl: pr.html_url },
+      { entityType: "task", entityId: task._id }
+    );
+
+    emitToWs(workspaceId, "github:sync", {
+      taskId: task._id.toString(),
+      github: task.github,
+    });
+
+    console.log(`[GitHub] PR opened: #${pr.number}`);
+  } catch (err) {
+    console.warn("[GitHub] PR creation failed (non-fatal):", err.response?.data?.message || err.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TASK CRUD
+   ═══════════════════════════════════════════════════════════════ */
 
 // Create Task
 exports.createTask = async (req, res) => {
@@ -14,7 +161,7 @@ exports.createTask = async (req, res) => {
     console.log("Create Task Request:", req.body);
     const { title, description, boardId, priority, dueDate } = req.body;
 
-    const board = await Board.findById(boardId).populate('project');
+    const board = await Board.findById(boardId).populate("project");
 
     if (!board) {
       return res.status(404).json({ message: "Board not found" });
@@ -26,7 +173,7 @@ exports.createTask = async (req, res) => {
       board: boardId,
       priority,
       dueDate,
-      createdBy: req.user._id
+      createdBy: req.user._id,
     });
 
     // Log Activity
@@ -35,15 +182,13 @@ exports.createTask = async (req, res) => {
     if (workspaceId) {
       await logActivity(workspaceId, req.user._id, "task_created", {
         taskTitle: title,
-        projectName: board.project?.name || "Project"
+        projectName: board.project?.name || "Project",
       }, { entityType: "task", entityId: task._id });
 
-      // Real-time
       emitToWs(workspaceId, "task:created", { task: task.toObject(), boardId });
     }
 
     res.status(201).json(task);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -88,7 +233,7 @@ exports.moveTask = async (req, res) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const oldBoard = await Board.findById(task.board);
-    const newBoard = await Board.findById(boardId).populate('project');
+    const newBoard = await Board.findById(boardId).populate("project");
 
     task.board = boardId;
     await task.save();
@@ -96,10 +241,9 @@ exports.moveTask = async (req, res) => {
     await logActivity(newBoard.project.workspace, req.user._id, "task_moved", {
       taskTitle: task.title,
       fromBoard: oldBoard.name,
-      toBoard:   newBoard.name
+      toBoard:   newBoard.name,
     }, { entityType: "task", entityId: task._id });
 
-    // Real-time
     emitToWs(newBoard.project.workspace, "task:moved", {
       taskId,
       fromBoardId: oldBoard._id.toString(),
@@ -108,7 +252,6 @@ exports.moveTask = async (req, res) => {
     });
 
     res.json({ message: "Task moved successfully", task });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -118,18 +261,17 @@ exports.moveTask = async (req, res) => {
 exports.deleteTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const task = await Task.findById(taskId).populate({ path: 'board', populate: { path: 'project' } });
+    const task = await Task.findById(taskId).populate({ path: "board", populate: { path: "project" } });
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const workspaceId = task.board.project.workspace;
-    const taskTitle = task.title;
+    const taskTitle   = task.title;
 
     await Task.findByIdAndDelete(taskId);
 
     await logActivity(workspaceId, req.user._id, "task_deleted", { taskTitle },
       { entityType: "task", entityId: taskId });
 
-    // Real-time
     emitToWs(workspaceId, "task:deleted", { taskId });
 
     res.json({ message: "Task deleted successfully" });
@@ -138,7 +280,7 @@ exports.deleteTask = async (req, res) => {
   }
 };
 
-// Assign Task — validates assignee is a workspace member
+// Assign Task
 exports.assignTask = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -147,10 +289,9 @@ exports.assignTask = async (req, res) => {
     const task = await Task.findById(taskId);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    const board = await Board.findById(task.board).populate('project');
+    const board = await Board.findById(task.board).populate("project");
     if (!board) return res.status(404).json({ message: "Board not found" });
 
-    // Validate assignee is a workspace member (req.workspace set by isMember/isAdmin middleware)
     if (userId) {
       const workspace = req.workspace;
       const isMemberOfWs = workspace.members.some(m => m.userId.toString() === userId.toString());
@@ -166,26 +307,24 @@ exports.assignTask = async (req, res) => {
       const assignedUser = await User.findById(userId);
       await logActivity(board.project.workspace, req.user._id, "task_assigned", {
         taskTitle: task.title,
-        assignedToName: assignedUser?.name || ""
+        assignedToName: assignedUser?.name || "",
       }, { entityType: "task", entityId: task._id });
     }
 
     const populated = await Task.findById(taskId).populate("assignedTo", "name email avatar");
 
-    // Real-time
     emitToWs(board.project.workspace, "task:assigned", {
       taskId,
       task: populated.toObject(),
     });
 
     res.json({ message: "Task assigned", task: populated });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Update Task Status — PATCH /api/tasks/:taskId/status
+/* ── Update Task Status — PATCH /api/tasks/:taskId/status ───── */
 exports.updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -203,26 +342,34 @@ exports.updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
-    const board = await Board.findById(task.board).populate('project');
+    const { workspaceId } = await getWorkspaceForTask(task) || {};
 
-    if (board?.project?.workspace) {
-      await logActivity(board.project.workspace, req.user._id, "task_status_changed", {
+    if (workspaceId) {
+      await logActivity(workspaceId, req.user._id, "task_status_changed", {
         taskTitle: task.title,
         oldStatus,
-        newStatus: status
+        newStatus: status,
       }, { entityType: "task", entityId: task._id });
 
-      // Real-time
-      emitToWs(board.project.workspace, "task:statusChanged", {
+      emitToWs(workspaceId, "task:statusChanged", {
         taskId,
         boardId: task.board.toString(),
         status,
         oldStatus,
       });
+
+      /* ── Item 3: Auto-create branch on inprogress ── */
+      if (status === "inprogress" && !task.github?.branch) {
+        setImmediate(() => tryCreateBranch(task, req, workspaceId));
+      }
+
+      /* ── Item 5: Auto-open PR on done ── */
+      if (status === "done" && task.github?.branch && !task.github?.pr?.number) {
+        setImmediate(() => tryOpenPR(task, req, workspaceId));
+      }
     }
 
     res.json({ message: "Task status updated", task });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

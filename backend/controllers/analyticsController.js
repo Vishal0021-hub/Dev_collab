@@ -1,8 +1,8 @@
-const mongoose  = require("mongoose");
-const Task      = require("../models/Task");
-const Board     = require("../models/Board");
-const Project   = require("../models/Project");
-const Message   = require("../models/Message");
+const mongoose = require("mongoose");
+const Task = require("../models/Task");
+const Board = require("../models/Board");
+const Project = require("../models/Project");
+const Message = require("../models/Message");
 const CodeSnippet = require("../models/CodeSnippet");
 const Workspace = require("../models/workspace");
 
@@ -31,8 +31,8 @@ exports.getAnalytics = async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const rawRange = req.query.range || "30d";
-    const days     = rawRange === "7d" ? 7 : rawRange === "90d" ? 90 : 30;
-    const since    = rangeStart(days);
+    const days = rawRange === "7d" ? 7 : rawRange === "90d" ? 90 : 30;
+    const since = rangeStart(days);
 
     if (!mongoose.Types.ObjectId.isValid(workspaceId)) {
       return res.status(400).json({ message: "Invalid workspaceId" });
@@ -49,19 +49,19 @@ exports.getAnalytics = async (req, res) => {
       : [];
 
     const tasksByStatus = {
-      total:      allTasks.length,
-      todo:       allTasks.filter(t => t.status === "todo").length,
+      total: allTasks.length,
+      todo: allTasks.filter(t => t.status === "todo").length,
       inprogress: allTasks.filter(t => t.status === "inprogress").length,
-      review:     allTasks.filter(t => t.status === "review").length,
-      done:       allTasks.filter(t => t.status === "done").length,
+      review: allTasks.filter(t => t.status === "review").length,
+      done: allTasks.filter(t => t.status === "done").length,
     };
 
     /* ── 2. Completed tasks over time (grouped by day) ─────── */
     const completedOverTime = boardIds.length ? await Task.aggregate([
       {
         $match: {
-          board:     { $in: boardIds },
-          status:    "done",
+          board: { $in: boardIds },
+          status: "done",
           updatedAt: { $gte: since },
         },
       },
@@ -81,34 +81,34 @@ exports.getAnalytics = async (req, res) => {
     const velocityByMember = boardIds.length ? await Task.aggregate([
       {
         $match: {
-          board:      { $in: boardIds },
-          status:     "done",
+          board: { $in: boardIds },
+          status: "done",
           assignedTo: { $ne: null },
-          updatedAt:  { $gte: since },
+          updatedAt: { $gte: since },
         },
       },
       {
         $group: {
-          _id:   "$assignedTo",
+          _id: "$assignedTo",
           count: { $sum: 1 },
         },
       },
       {
         $lookup: {
-          from:         "users",
-          localField:   "_id",
+          from: "users",
+          localField: "_id",
           foreignField: "_id",
-          as:           "user",
+          as: "user",
         },
       },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          _id:    0,
+          _id: 0,
           userId: "$_id",
-          name:   { $ifNull: ["$user.name", "Unknown"] },
+          name: { $ifNull: ["$user.name", "Unknown"] },
           avatar: "$user.avatar",
-          count:  1,
+          count: 1,
         },
       },
       { $sort: { count: -1 } },
@@ -138,21 +138,21 @@ exports.getAnalytics = async (req, res) => {
     ]);
     const burndown = [...dateSet].sort().map(date => ({
       date,
-      created:   (createdPerDay.find(d => d.date === date)?.count || 0),
+      created: (createdPerDay.find(d => d.date === date)?.count || 0),
       completed: (completedPerDay.find(d => d.date === date)?.count || 0),
     }));
 
     /* ── 5. Overdue tasks ──────────────────────────────────── */
     const overdueList = boardIds.length ? await Task.find({
-      board:   { $in: boardIds },
-      status:  { $ne: "done" },
+      board: { $in: boardIds },
+      status: { $ne: "done" },
       dueDate: { $lt: new Date(), $ne: null },
     })
       .populate("assignedTo", "name avatar")
       .select("title status priority dueDate assignedTo board")
       .sort({ dueDate: 1 })
       .limit(20)
-    : [];
+      : [];
 
     /* ── 6. Top contributors score ──────────────────────────
        score = (tasksCompleted × 3) + (messages × 1) + (snippetsCreated × 2)
@@ -183,15 +183,15 @@ exports.getAnalytics = async (req, res) => {
     const topContributors = workspace.members
       .map(m => {
         const uid = (m.userId?._id || m.userId)?.toString();
-        const msgs     = msgCounts.find(x => x._id?.toString() === uid)?.count || 0;
+        const msgs = msgCounts.find(x => x._id?.toString() === uid)?.count || 0;
         const snippets = snippetCounts.find(x => x._id?.toString() === uid)?.count || 0;
-        const done     = taskCounts.find(x => x._id?.toString() === uid)?.count || 0;
-        const score    = (done * 3) + (msgs * 1) + (snippets * 2);
+        const done = taskCounts.find(x => x._id?.toString() === uid)?.count || 0;
+        const score = (done * 3) + (msgs * 1) + (snippets * 2);
         return {
           userId: uid,
-          name:   m.userId?.name || "Unknown",
+          name: m.userId?.name || "Unknown",
           avatar: m.userId?.avatar || null,
-          role:   m.role,
+          role: m.role,
           score,
           tasksCompleted: done,
           messages: msgs,
@@ -203,13 +203,13 @@ exports.getAnalytics = async (req, res) => {
 
     /* ── Summary ───────────────────────────────────────────── */
     res.json({
-      range:         rawRange,
-      since:         since.toISOString(),
+      range: rawRange,
+      since: since.toISOString(),
       tasksByStatus,
       completedOverTime,
       velocityByMember,
       burndown,
-      overdueCount:  overdueList.length,
+      overdueCount: overdueList.length,
       overdueList,
       topContributors,
     });

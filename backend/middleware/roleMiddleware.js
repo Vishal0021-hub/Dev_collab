@@ -11,7 +11,7 @@ const Task = require("../models/Task");
 const authorize = (allowedRoles) => {
   return async (req, res, next) => {
     try {
-      let workspaceId = req.params.workspaceId || req.body.workspaceId;
+      let workspaceId = req.params.workspaceId || req.body?.workspaceId;
 
       // If workspaceId is not in params or body, try to find it from Project, Board, or Task
       if (!workspaceId) {
@@ -21,8 +21,8 @@ const authorize = (allowedRoles) => {
             const project = await Project.findById(projectId);
             if (project) workspaceId = project.workspace;
           }
-        } else if (req.params.taskId || req.body.taskId) {
-          const taskId = req.params.taskId || req.body.taskId;
+        } else if (req.params.taskId || req.body?.taskId) {
+          const taskId = req.params.taskId || req.body?.taskId;
           if (mongoose.isValidObjectId(taskId)) {
             const task = await Task.findById(taskId).populate({
               path: 'board',
@@ -34,8 +34,8 @@ const authorize = (allowedRoles) => {
               workspaceId = task.board.project.workspace;
             }
           }
-        } else if (req.body.boardId || req.params.boardId) {
-          const boardId = req.body.boardId || req.params.boardId;
+        } else if (req.body?.boardId || req.params.boardId) {
+          const boardId = req.body?.boardId || req.params.boardId;
           if (mongoose.isValidObjectId(boardId)) {
             const board = await Board.findById(boardId).populate('project');
             if (board && board.project) workspaceId = board.project.workspace;
@@ -76,7 +76,7 @@ const authorize = (allowedRoles) => {
 
 const isOwner = async (req, res, next) => {
   try {
-    const workspace = await Workspace.findById(req.params.workspaceId || req.body.workspaceId);
+    const workspace = await Workspace.findById(req.params.workspaceId || req.body?.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
     const member = workspace.members.find((m) => {
@@ -98,18 +98,18 @@ const isOwner = async (req, res, next) => {
 
 const isAdmin = async (req, res, next) => {
   try {
-    let workspaceId = req.params.workspaceId || req.body.workspaceId;
+    let workspaceId = req.params.workspaceId || req.body?.workspaceId;
 
     // If workspaceId is not in params or body, try to find it from Project, Board, or Task
     if (!workspaceId) {
-      if (req.params.projectId || req.body.projectId) {
-        const projectId = req.params.projectId || req.body.projectId;
+      if (req.params.projectId || req.body?.projectId) {
+        const projectId = req.params.projectId || req.body?.projectId;
         if (mongoose.isValidObjectId(projectId)) {
           const project = await Project.findById(projectId);
           if (project) workspaceId = project.workspace;
         }
-      } else if (req.params.boardId || req.body.boardId) {
-        const boardId = req.params.boardId || req.body.boardId;
+      } else if (req.params.boardId || req.body?.boardId) {
+        const boardId = req.params.boardId || req.body?.boardId;
         if (mongoose.isValidObjectId(boardId)) {
           const board = await Board.findById(boardId);
           if (board && mongoose.isValidObjectId(board.project)) {
@@ -117,8 +117,8 @@ const isAdmin = async (req, res, next) => {
             if (project) workspaceId = project.workspace;
           }
         }
-      } else if (req.params.taskId || req.body.taskId) {
-        const taskId = req.params.taskId || req.body.taskId;
+      } else if (req.params.taskId || req.body?.taskId) {
+        const taskId = req.params.taskId || req.body?.taskId;
         if (mongoose.isValidObjectId(taskId)) {
           const task = await Task.findById(taskId);
           if (task && mongoose.isValidObjectId(task.board)) {
@@ -163,18 +163,18 @@ const isAdmin = async (req, res, next) => {
 
 const isMember = async (req, res, next) => {
   try {
-    let workspaceId = req.params.workspaceId || req.body.workspaceId;
+    let workspaceId = req.params.workspaceId || req.body?.workspaceId;
 
     // If workspaceId is not in params or body, try to find it from Project, Board, or Task
     if (!workspaceId) {
-      if (req.params.projectId || req.body.projectId) {
-        const projectId = req.params.projectId || req.body.projectId;
+      if (req.params.projectId || req.body?.projectId) {
+        const projectId = req.params.projectId || req.body?.projectId;
         if (mongoose.isValidObjectId(projectId)) {
           const project = await Project.findById(projectId);
           if (project) workspaceId = project.workspace;
         }
-      } else if (req.params.boardId || req.body.boardId) {
-        const boardId = req.params.boardId || req.body.boardId;
+      } else if (req.params.boardId || req.body?.boardId) {
+        const boardId = req.params.boardId || req.body?.boardId;
         if (mongoose.isValidObjectId(boardId)) {
           const board = await Board.findById(boardId);
           if (board && mongoose.isValidObjectId(board.project)) {
@@ -182,8 +182,8 @@ const isMember = async (req, res, next) => {
             if (project) workspaceId = project.workspace;
           }
         }
-      } else if (req.params.taskId || req.body.taskId) {
-        const taskId = req.params.taskId || req.body.taskId;
+      } else if (req.params.taskId || req.body?.taskId) {
+        const taskId = req.params.taskId || req.body?.taskId;
         if (mongoose.isValidObjectId(taskId)) {
           const task = await Task.findById(taskId);
           if (task && mongoose.isValidObjectId(task.board)) {

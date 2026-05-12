@@ -45,7 +45,12 @@ function markOffline(workspaceId, userId) {
 function initSocket(httpServer) {
   _io = new Server(httpServer, {
     cors: {
-      origin:      process.env.CLIENT_URL || "http://localhost:5173",
+      origin: [
+        process.env.CLIENT_URL,
+        process.env.SOCKET_CORS_ORIGIN,
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+      ].filter(Boolean),
       credentials: true,
     },
     pingTimeout:  60000,
@@ -56,15 +61,22 @@ function initSocket(httpServer) {
   _io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
-      if (!token) return next(new Error("Authentication required"));
+      if (!token) {
+        console.warn("[Socket] ✗ Auth failed: No token provided");
+        return next(new Error("Authentication required"));
+      }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user    = await User.findById(decoded.id).select("_id name avatar email");
-      if (!user) return next(new Error("User not found"));
+      if (!user) {
+        console.warn("[Socket] ✗ Auth failed: User not found in DB");
+        return next(new Error("User not found"));
+      }
 
       socket.user = user;
       next();
-    } catch {
+    } catch (err) {
+      console.warn("[Socket] ✗ Auth failed: Invalid token", err.message);
       next(new Error("Invalid token"));
     }
   });

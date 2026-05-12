@@ -25,6 +25,10 @@ const IconEdit      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill
 const IconCalendar  = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
 const IconActivity  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
 const IconUsers     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const IconGithub    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>;
+const IconGitBranch = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>;
+const IconGitPR     = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/></svg>;
+const IconGitCommit = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>;
 
 /* ─── Priority config ──────────────────────────────────────────── */
 const PRIORITY_CONFIG = {
@@ -165,11 +169,19 @@ const Board = () => {
       ));
     };
 
+    const onGitHubSync = ({ taskId, github }) => {
+      setTasks(prev => prev.map(t => normalizeId(t._id) === normalizeId(taskId) ? { ...t, github } : t));
+      if (taskModal?.task?._id === taskId) {
+        setTaskModal(prev => ({ ...prev, task: { ...prev.task, github } }));
+      }
+    };
+
     socket.on("task:created",       onTaskCreated);
     socket.on("task:moved",         onTaskMoved);
     socket.on("task:deleted",       onTaskDeleted);
     socket.on("task:assigned",      onTaskAssigned);
     socket.on("task:statusChanged", onStatusChanged);
+    socket.on("github:sync",        onGitHubSync);
 
     return () => {
       socket.off("task:created",       onTaskCreated);
@@ -177,8 +189,9 @@ const Board = () => {
       socket.off("task:deleted",       onTaskDeleted);
       socket.off("task:assigned",      onTaskAssigned);
       socket.off("task:statusChanged", onStatusChanged);
+      socket.off("github:sync",        onGitHubSync);
     };
-  }, [socket, workspaceId]);
+  }, [socket, workspaceId, taskModal?.task?._id]);
 
 
 
@@ -557,6 +570,27 @@ const Board = () => {
                                         </div>
                                       )}
 
+                                      {/* GitHub Indicators */}
+                                      {task.github && (task.github.branch || task.github.pr || (task.github.commits && task.github.commits.length > 0)) && (
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 12px", marginBottom: 8, padding: "6px 8px", background: "rgba(99,102,241,0.06)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.1)" }}>
+                                          {task.github.branch && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#818cf8", fontSize: 10, fontWeight: 600 }} title={`Branch: ${task.github.branch}`}>
+                                              <IconGitBranch /> <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.github.branch}</span>
+                                            </div>
+                                          )}
+                                          {task.github.commits?.length > 0 && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: 600 }}>
+                                              <IconGitCommit /> {task.github.commits.length}
+                                            </div>
+                                          )}
+                                          {task.github.pr && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: task.github.pr.state === "merged" ? "#a78bfa" : task.github.pr.state === "open" ? "#34d399" : "#f87171", fontSize: 10, fontWeight: 700 }}>
+                                              <IconGitPR /> PR #{task.github.pr.number}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
                                       {/* Footer: Avatar + Due date */}
                                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
                                         {task.assignedTo?.name ? (
@@ -686,6 +720,7 @@ const Board = () => {
                   {[
                     { key: "details",     label: "📋 Details" },
                     { key: "attachments", label: "📎 Attachments" },
+                    { key: "github",      label: "🐙 GitHub" },
                     { key: "code",        label: "</> Code" },
                   ].map(tab => (
                     <button key={tab.key} type="button" onClick={() => setModalTab(tab.key)}
@@ -791,6 +826,79 @@ const Board = () => {
               {/* ── Code Tab ── */}
               {modalTab === "code" && taskModal.mode === "edit" && (
                 <MonacoEditorPanel taskId={taskModal.task._id} taskTitle={taskModal.task?.title} />
+              )}
+
+              {/* ── GitHub Tab ── */}
+              {modalTab === "github" && taskModal.mode === "edit" && (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  {!taskModal.task.github ? (
+                    <div style={{ textAlign: "center", padding: "40px 0", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px dashed rgba(255,255,255,0.1)" }}>
+                      <div style={{ fontSize: 24, marginBottom: 12 }}>🐙</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 6 }}>No GitHub Automation</div>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 280, margin: "0 auto" }}>
+                        Move this task to <strong>In Progress</strong> to automatically create a branch, 
+                        or <strong>Done</strong> to open a Pull Request.
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                      {/* Branch Info */}
+                      <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#818cf8", fontWeight: 700, fontSize: 14 }}>
+                            <IconGitBranch /> Active Branch
+                          </div>
+                          {taskModal.task.github.branchUrl && (
+                            <a href={taskModal.task.github.branchUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>View on GitHub ↗</a>
+                          )}
+                        </div>
+                        <div style={{ background: "rgba(0,0,0,0.2)", padding: "10px 14px", borderRadius: 10, fontFamily: "monospace", fontSize: 13, color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.05)" }}>
+                          {taskModal.task.github.branch || "Not created yet"}
+                        </div>
+                      </div>
+
+                      {/* PR Info */}
+                      {taskModal.task.github.pr && (
+                        <div style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 16, padding: 20 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#34d399", fontWeight: 700, fontSize: 14 }}>
+                              <IconGitPR /> Pull Request #{taskModal.task.github.pr.number}
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: taskModal.task.github.pr.state === "merged" ? "#a78bfa" : "#34d399", color: "#fff", textTransform: "uppercase" }}>
+                              {taskModal.task.github.pr.state}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 4 }}>{taskModal.task.github.pr.title}</div>
+                          <a href={taskModal.task.github.pr.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#34d399", textDecoration: "none", fontWeight: 600 }}>Review Pull Request →</a>
+                        </div>
+                      )}
+
+                      {/* Commits */}
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                          <IconGitCommit /> Recent Commits ({taskModal.task.github.commits?.length || 0})
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {!taskModal.task.github.commits?.length ? (
+                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "10px 0" }}>No commits synced yet.</div>
+                          ) : (
+                            taskModal.task.github.commits.slice(0, 5).map((c, i) => (
+                              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, color: "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.message}</div>
+                                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{c.author} • {new Date(c.timestamp).toLocaleTimeString()}</div>
+                                </div>
+                                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#818cf8", background: "rgba(129,140,248,0.1)", padding: "2px 6px", borderRadius: 4 }}>
+                                  {c.sha.slice(0, 7)}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
             </div>

@@ -250,7 +250,7 @@ export default function Dashboard() {
                     <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Channels</span>
                     <span style={{ marginLeft: "auto", fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{dashboard?.channels?.length || 0}</span>
                   </div>
-                  {dashboard?.channels?.length === 0 ? (
+                  {(!dashboard?.channels || dashboard.channels.length === 0) ? (
                     <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "8px 0" }}>No channels yet — create one from the sidebar</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

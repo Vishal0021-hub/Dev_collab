@@ -120,7 +120,7 @@ function applySecurityMiddleware(app) {
           "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:"],
           "frame-src": ["'self'", "blob:"],
           "img-src": ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
-          "connect-src": ["'self'", "https://api.cloudinary.com", "wss://*", "ws://*"],
+          "connect-src": ["'self'", "https://api.cloudinary.com", "*"],
         },
       },
       crossOriginEmbedderPolicy: false,
