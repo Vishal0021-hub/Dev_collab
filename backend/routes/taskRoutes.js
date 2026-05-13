@@ -8,7 +8,12 @@ const {
   moveTask,
   deleteTask,
   assignTask,
-  updateTaskStatus
+  updateTaskStatus,
+  addDependency,
+  removeDependency,
+  getDependencies,
+  addGithubLink,
+  removeGithubLink
 } = require("../controllers/taskController");
 
 const { protect } = require("../middleware/authmiddleware");
@@ -36,5 +41,14 @@ router.put("/:taskId", protect, updateTask);
 
 // Delete task
 router.delete("/:taskId", protect, isAdmin, deleteTask);
+
+/* ── Dependencies ─────────────────────────────────────────────── */
+router.get("/:taskId/dependencies", protect, isMember, getDependencies);
+router.post("/:taskId/dependencies", protect, isMember, addDependency);
+router.delete("/:taskId/dependencies/:depId", protect, isMember, removeDependency);
+
+/* ── GitHub Links (Read-Only) ─────────────────────────────────── */
+router.post("/:taskId/github-links", protect, isMember, addGithubLink);
+router.delete("/:taskId/github-links/:linkId", protect, isMember, removeGithubLink);
 
 module.exports = router;

@@ -12,7 +12,6 @@ import ActivityLog from "../components/ActivityLog";
 import AssignDropdown from "../components/AssignDropdown";
 import NotificationBell from "../components/NotificationBell";
 import AttachmentPanel from "../components/AttachmentPanel";
-import MonacoEditorPanel from "../components/MonacoEditorPanel";
 import { BoardSkeleton } from "../components/Skeletons";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useSocket } from "../context/SocketContext";
@@ -29,6 +28,9 @@ const IconGithub    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill
 const IconGitBranch = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>;
 const IconGitPR     = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/></svg>;
 const IconGitCommit = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>;
+const IconLock      = ({ size=12 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+const IconSearch    = ({ size=14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+const IconLink      = ({ size=14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>;
 
 /* ─── Priority config ──────────────────────────────────────────── */
 const PRIORITY_CONFIG = {
@@ -83,6 +85,15 @@ const Board = () => {
   const [taskForm,     setTaskForm]     = useState({
     title: "", description: "", priority: "medium", dueDate: "", assignedTo: "", status: "todo"
   });
+
+  // Dependencies search
+  const [depSearch, setDepSearch] = useState("");
+  const [depResults, setDepResults] = useState([]);
+  const [depLoading, setDepLoading] = useState(false);
+
+  // GitHub Link
+  const [ghLinkUrl, setGhLinkUrl] = useState("");
+  const [ghLinkLoading, setGhLinkLoading] = useState(false);
 
   /* ── Fetch on mount ── */
   useEffect(() => {
@@ -176,12 +187,28 @@ const Board = () => {
       }
     };
 
+    const onTaskBlocked = ({ taskId, blockers }) => {
+      setTasks(prev => prev.map(t => normalizeId(t._id) === normalizeId(taskId) ? { ...t, blockedBy: blockers } : t));
+      if (taskModal?.task?._id === taskId) {
+        setTaskModal(prev => ({ ...prev, task: { ...prev.task, blockedBy: blockers } }));
+      }
+    };
+
+    const onTaskUnblocked = ({ taskId }) => {
+      setTasks(prev => prev.map(t => normalizeId(t._id) === normalizeId(taskId) ? { ...t, blockedBy: [] } : t));
+      if (taskModal?.task?._id === taskId) {
+        setTaskModal(prev => ({ ...prev, task: { ...prev.task, blockedBy: [] } }));
+      }
+    };
+
     socket.on("task:created",       onTaskCreated);
     socket.on("task:moved",         onTaskMoved);
     socket.on("task:deleted",       onTaskDeleted);
     socket.on("task:assigned",      onTaskAssigned);
     socket.on("task:statusChanged", onStatusChanged);
     socket.on("github:sync",        onGitHubSync);
+    socket.on("task:blocked",       onTaskBlocked);
+    socket.on("task:unblocked",     onTaskUnblocked);
 
     return () => {
       socket.off("task:created",       onTaskCreated);
@@ -190,6 +217,8 @@ const Board = () => {
       socket.off("task:assigned",      onTaskAssigned);
       socket.off("task:statusChanged", onStatusChanged);
       socket.off("github:sync",        onGitHubSync);
+      socket.off("task:blocked",       onTaskBlocked);
+      socket.off("task:unblocked",     onTaskUnblocked);
     };
   }, [socket, workspaceId, taskModal?.task?._id]);
 
@@ -344,9 +373,94 @@ const Board = () => {
     } catch { fetchBoards(); }
   };
 
+  /* ── Dependency Management ── */
+  const searchTasks = async (query) => {
+    setDepSearch(query);
+    if (query.length < 2) {
+      setDepResults([]);
+      return;
+    }
+    setDepLoading(true);
+    try {
+      // Find tasks in this workspace but NOT the current task
+      const res = await API.get(`/search?q=${query}&type=tasks&workspaceId=${workspaceId}`);
+      setDepResults(res.data.filter(t => t._id !== taskModal?.task?._id));
+    } catch (err) {
+      console.error("searchTasks:", err);
+    } finally {
+      setDepLoading(false);
+    }
+  };
+
+  const addDependency = async (blockerId) => {
+    try {
+      const res = await API.post(`/tasks/${taskModal.task._id}/dependencies`, { blockedByTaskId: blockerId });
+      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, blockedBy: [...(t.blockedBy || []), res.data.blockedBy.at(-1)] } : t));
+      setTaskModal(prev => ({
+        ...prev,
+        task: { ...prev.task, blockedBy: [...(prev.task.blockedBy || []), res.data.blockedBy.at(-1)] }
+      }));
+      setDepSearch("");
+      setDepResults([]);
+      toast.success("Dependency added");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to add dependency");
+    }
+  };
+
+  const removeDependency = async (depId) => {
+    try {
+      await API.delete(`/tasks/${taskModal.task._id}/dependencies/${depId}`);
+      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, blockedBy: t.blockedBy.filter(b => b._id !== depId) } : t));
+      setTaskModal(prev => ({
+        ...prev,
+        task: { ...prev.task, blockedBy: prev.task.blockedBy.filter(b => b._id !== depId) }
+      }));
+      toast.success("Dependency removed");
+    } catch (err) {
+      toast.error("Failed to remove dependency");
+    }
+  };
+
+  /* ── GitHub Links (Read-Only) ── */
+  const addGithubLink = async (e) => {
+    e.preventDefault();
+    if (!ghLinkUrl.trim()) return;
+    setGhLinkLoading(true);
+    try {
+      const res = await API.post(`/tasks/${taskModal.task._id}/github-links`, { url: ghLinkUrl.trim() });
+      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, githubLinks: res.data.githubLinks } : t));
+      setTaskModal(prev => ({ ...prev, task: { ...prev.task, githubLinks: res.data.githubLinks } }));
+      setGhLinkUrl("");
+      toast.success("Link added");
+    } catch (err) {
+      toast.error("Failed to add link");
+    } finally {
+      setGhLinkLoading(false);
+    }
+  };
+
+  const removeGithubLink = async (linkId) => {
+    try {
+      await API.delete(`/tasks/${taskModal.task._id}/github-links/${linkId}`);
+      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, githubLinks: t.githubLinks.filter(l => l._id !== linkId) } : t));
+      setTaskModal(prev => ({ ...prev, task: { ...prev.task, githubLinks: prev.task.githubLinks.filter(l => l._id !== linkId) } }));
+      toast.success("Link removed");
+    } catch (err) {
+      toast.error("Failed to remove link");
+    }
+  };
+
   /* ── Drag & drop ── */
   const onDragEnd = async ({ source, destination, draggableId }) => {
     if (!destination || source.droppableId === destination.droppableId) return;
+    
+    const task = tasks.find(t => t._id === draggableId);
+    if (task?.blockedBy?.some(b => b.status !== 'done')) {
+      toast.error("This task is blocked by unfinished dependencies", { icon: "🔒" });
+      return;
+    }
+
     setTasks(prev => prev.map(t =>
       t._id === draggableId ? { ...t, board: destination.droppableId } : t
     ));
@@ -545,6 +659,9 @@ const Board = () => {
                                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                           <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: pCfg.bg, color: pCfg.color, textTransform: "uppercase", letterSpacing: "0.08em" }}>{pCfg.label}</span>
                                           <span style={{ fontSize: 10, fontWeight: 600, color: statusStep.color }}>{statusStep.icon} {statusStep.label}</span>
+                                          {task.blockedBy?.some(b => b.status !== 'done') && (
+                                            <span title="Blocked" style={{ display: "flex", color: "#f87171" }}><IconLock size={12}/></span>
+                                          )}
                                         </div>
                                         <div style={{ display: "flex", gap: 2 }} onClick={e => e.stopPropagation()}>
                                           <button onClick={() => openEditTask(task)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", padding: 3, borderRadius: 5, transition: "color 0.15s" }}
@@ -570,26 +687,7 @@ const Board = () => {
                                         </div>
                                       )}
 
-                                      {/* GitHub Indicators */}
-                                      {task.github && (task.github.branch || task.github.pr || (task.github.commits && task.github.commits.length > 0)) && (
-                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 12px", marginBottom: 8, padding: "6px 8px", background: "rgba(99,102,241,0.06)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.1)" }}>
-                                          {task.github.branch && (
-                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#818cf8", fontSize: 10, fontWeight: 600 }} title={`Branch: ${task.github.branch}`}>
-                                              <IconGitBranch /> <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.github.branch}</span>
-                                            </div>
-                                          )}
-                                          {task.github.commits?.length > 0 && (
-                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: 600 }}>
-                                              <IconGitCommit /> {task.github.commits.length}
-                                            </div>
-                                          )}
-                                          {task.github.pr && (
-                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: task.github.pr.state === "merged" ? "#a78bfa" : task.github.pr.state === "open" ? "#34d399" : "#f87171", fontSize: 10, fontWeight: 700 }}>
-                                              <IconGitPR /> PR #{task.github.pr.number}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
+
 
                                       {/* Footer: Avatar + Due date */}
                                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
@@ -714,19 +812,17 @@ const Board = () => {
                 {taskModal.mode === "add" ? "New Task" : taskModal.task?.title || "Edit Task"}
               </div>
 
-              {/* ── Tabs (edit mode only) ── */}
-              {taskModal.mode === "edit" && (
                 <div style={{ display: "flex", gap: 2, marginBottom: 20, marginTop: 12, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
                   {[
-                    { key: "details",     label: "📋 Details" },
-                    { key: "attachments", label: "📎 Attachments" },
-                    { key: "github",      label: "🐙 GitHub" },
-                    { key: "code",        label: "</> Code" },
+                    { key: "details",      label: "📋 Details" },
+                    { key: "attachments",  label: "📎 Files" },
+                    { key: "dependencies", label: "🔒 Blockers" },
+                    { key: "links",        label: "🔗 Links" },
                   ].map(tab => (
                     <button key={tab.key} type="button" onClick={() => setModalTab(tab.key)}
                       style={{
-                        flex: 1, border: "none", borderRadius: 8, padding: "7px 10px",
-                        cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.15s",
+                        flex: 1, border: "none", borderRadius: 8, padding: "7px 4px",
+                        cursor: "pointer", fontSize: 11, fontWeight: 600, transition: "all 0.15s",
                         background: modalTab === tab.key ? "rgba(99,102,241,0.2)" : "transparent",
                         color: modalTab === tab.key ? "#818cf8" : "rgba(255,255,255,0.4)",
                         borderBottom: modalTab === tab.key ? "2px solid #6366f1" : "2px solid transparent",
@@ -734,7 +830,6 @@ const Board = () => {
                     >{tab.label}</button>
                   ))}
                 </div>
-              )}
 
               {/* ── Details Tab (+ add mode) ── */}
               {(modalTab === "details" || taskModal.mode === "add") && (
@@ -823,81 +918,105 @@ const Board = () => {
                 <AttachmentPanel taskId={taskModal.task._id} isAdmin={isAdmin} />
               )}
 
-              {/* ── Code Tab ── */}
-              {modalTab === "code" && taskModal.mode === "edit" && (
-                <MonacoEditorPanel taskId={taskModal.task._id} taskTitle={taskModal.task?.title} />
+              {/* ── Dependencies Tab ── */}
+              {modalTab === "dependencies" && taskModal.mode === "edit" && (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Add Dependency</label>
+                  <div style={{ position: "relative", marginBottom: 20 }}>
+                    <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }}><IconSearch/></div>
+                    <input
+                      value={depSearch} onChange={e => searchTasks(e.target.value)}
+                      placeholder="Search tasks to add as dependency…"
+                      style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 12px 12px 36px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                    />
+                    {depLoading && <div style={{ position: "absolute", right: 12, top: "35%", fontSize: 10, color: "#818cf8" }}>Searching…</div>}
+                    
+                    {depResults.length > 0 && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#1a1d26", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, marginTop: 4, zIndex: 10, maxHeight: 200, overflowY: "auto", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
+                        {depResults.map(res => (
+                          <div key={res._id} onClick={() => addDependency(res._id)}
+                            style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", transition: "background 0.2s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                          >
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{res.title}</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{res.status.toUpperCase()}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: 24 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>Blocked By ({taskModal.task.blockedBy?.length || 0})</label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {(!taskModal.task.blockedBy || taskModal.task.blockedBy.length === 0) ? (
+                        <div style={{ textAlign: "center", padding: "24px 0", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>No active dependencies</div>
+                      ) : (
+                        taskModal.task.blockedBy.map(b => (
+                          <div key={b._id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: b.status === 'done' ? "rgba(255,255,255,0.4)" : "#fff", textDecoration: b.status === 'done' ? 'line-through' : 'none' }}>{b.title}</div>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: b.status === 'done' ? "#34d399" : "#fbbf24", marginTop: 2 }}>{b.status.toUpperCase()}</div>
+                            </div>
+                            <button onClick={() => removeDependency(b._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.2)", fontSize: 18 }}>×</button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
 
-              {/* ── GitHub Tab ── */}
-              {modalTab === "github" && taskModal.mode === "edit" && (
+              {/* ── Links Tab ── */}
+              {modalTab === "links" && taskModal.mode === "edit" && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  {!taskModal.task.github ? (
-                    <div style={{ textAlign: "center", padding: "40px 0", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px dashed rgba(255,255,255,0.1)" }}>
-                      <div style={{ fontSize: 24, marginBottom: 12 }}>🐙</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 6 }}>No GitHub Automation</div>
-                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 280, margin: "0 auto" }}>
-                        Move this task to <strong>In Progress</strong> to automatically create a branch, 
-                        or <strong>Done</strong> to open a Pull Request.
-                      </p>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Add GitHub Link</label>
+                  <form onSubmit={addGithubLink} style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+                    <div style={{ position: "relative", flex: 1 }}>
+                      <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }}><IconLink/></div>
+                      <input
+                        value={ghLinkUrl} onChange={e => setGhLinkUrl(e.target.value)}
+                        placeholder="Paste PR or Commit URL…"
+                        style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 10px 10px 36px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                      />
                     </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      {/* Branch Info */}
-                      <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#818cf8", fontWeight: 700, fontSize: 14 }}>
-                            <IconGitBranch /> Active Branch
-                          </div>
-                          {taskModal.task.github.branchUrl && (
-                            <a href={taskModal.task.github.branchUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>View on GitHub ↗</a>
-                          )}
-                        </div>
-                        <div style={{ background: "rgba(0,0,0,0.2)", padding: "10px 14px", borderRadius: 10, fontFamily: "monospace", fontSize: 13, color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.05)" }}>
-                          {taskModal.task.github.branch || "Not created yet"}
-                        </div>
-                      </div>
+                    <button type="submit" disabled={ghLinkLoading} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "0 16px", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+                      {ghLinkLoading ? "…" : "Add"}
+                    </button>
+                  </form>
 
-                      {/* PR Info */}
-                      {taskModal.task.github.pr && (
-                        <div style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 16, padding: 20 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#34d399", fontWeight: 700, fontSize: 14 }}>
-                              <IconGitPR /> Pull Request #{taskModal.task.github.pr.number}
-                            </div>
-                            <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: taskModal.task.github.pr.state === "merged" ? "#a78bfa" : "#34d399", color: "#fff", textTransform: "uppercase" }}>
-                              {taskModal.task.github.pr.state}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 4 }}>{taskModal.task.github.pr.title}</div>
-                          <a href={taskModal.task.github.pr.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#34d399", textDecoration: "none", fontWeight: 600 }}>Review Pull Request →</a>
-                        </div>
-                      )}
-
-                      {/* Commits */}
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                          <IconGitCommit /> Recent Commits ({taskModal.task.github.commits?.length || 0})
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {!taskModal.task.github.commits?.length ? (
-                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "10px 0" }}>No commits synced yet.</div>
-                          ) : (
-                            taskModal.task.github.commits.slice(0, 5).map((c, i) => (
-                              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, color: "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.message}</div>
-                                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{c.author} • {new Date(c.timestamp).toLocaleTimeString()}</div>
-                                </div>
-                                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#818cf8", background: "rgba(129,140,248,0.1)", padding: "2px 6px", borderRadius: 4 }}>
-                                  {c.sha.slice(0, 7)}
-                                </div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>Resource Links ({taskModal.task.githubLinks?.length || 0})</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {(!taskModal.task.githubLinks || taskModal.task.githubLinks.length === 0) ? (
+                      <div style={{ textAlign: "center", padding: "24px 0", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>No links added yet</div>
+                    ) : (
+                      taskModal.task.githubLinks.map(link => (
+                        <div key={link._id} style={{ background: "rgba(10,13,22,0.5)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: link.meta?.title ? 8 : 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ width: 24, height: 24, borderRadius: 6, background: link.type === 'pr' ? "rgba(52,211,153,0.15)" : "rgba(129,140,248,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {link.type === 'pr' ? <IconGitPR/> : <IconGitCommit/>}
                               </div>
-                            ))
+                              <a href={link.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#818cf8", textDecoration: "none", fontWeight: 600 }}>
+                                {link.type.toUpperCase()} {link.meta?.number ? `#${link.meta.number}` : link.url.split('/').pop().slice(0, 7)}
+                              </a>
+                            </div>
+                            <button onClick={() => removeGithubLink(link._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.2)", fontSize: 18 }}>×</button>
+                          </div>
+                          {link.meta?.title && (
+                            <div style={{ fontSize: 12, color: "#e2e8f0", lineHeight: 1.4, marginLeft: 32 }}>{link.meta.title}</div>
+                          )}
+                          {link.meta?.state && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, marginLeft: 32 }}>
+                              <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: link.meta.state === 'merged' ? "#a78bfa" : link.meta.state === 'open' ? "#34d399" : "#f87171", color: "#fff", textTransform: "uppercase" }}>{link.meta.state}</span>
+                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>by {link.meta.author}</span>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </div>
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
 

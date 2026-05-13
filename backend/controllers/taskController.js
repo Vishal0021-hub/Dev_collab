@@ -13,143 +13,7 @@ const emitToWs = (workspaceId, event, payload) => {
   try { getIO().to(`ws:${workspaceId}`).emit(event, payload); } catch {}
 };
 
-/* ── GitHub API helper ──────────────────────────────────────── */
-const GH_HEADERS = (token) => ({
-  Authorization: `Bearer ${token}`,
-  "User-Agent":  "DevSpace",
-  Accept:        "application/vnd.github+json",
-});
 
-/* ── Slugify for branch names ───────────────────────────────── */
-function slugify(text) {
-  return (text || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .slice(0, 40);
-}
-
-/* ── Resolve workspaceId from task ──────────────────────────── */
-async function getWorkspaceForTask(task) {
-  const board = await Board.findById(task.board).populate("project");
-  if (!board?.project) return null;
-  return {
-    workspaceId: board.project.workspace?.toString(),
-    board,
-  };
-}
-
-/* ── Auto-branch creation (Item 3) ─────────────────────────── */
-async function tryCreateBranch(task, req, workspaceId) {
-  try {
-    const user = await User.findById(req.user._id).select("github");
-    if (!user?.github?.accessToken) return;
-
-    const workspace = await Workspace.findById(workspaceId);
-    if (!workspace?.github?.repoOwner) return;
-
-    const token  = decrypt(user.github.accessToken, user.github.tokenIv);
-    const owner  = workspace.github.repoOwner;
-    const repo   = workspace.github.repoName;
-    const base   = workspace.github.defaultBranch || "main";
-    const branchName = `feature/task-${task._id.toString().slice(-6)}-${slugify(task.title)}`;
-
-    // Get base branch SHA
-    const refRes = await axios.get(
-      `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${base}`,
-      { headers: GH_HEADERS(token) }
-    );
-    const headSha = refRes.data.object.sha;
-
-    // Create branch
-    await axios.post(
-      `https://api.github.com/repos/${owner}/${repo}/git/refs`,
-      { ref: `refs/heads/${branchName}`, sha: headSha },
-      { headers: GH_HEADERS(token) }
-    );
-
-    const branchUrl = `https://github.com/${owner}/${repo}/tree/${branchName}`;
-
-    task.github = task.github || {};
-    task.github.branch          = branchName;
-    task.github.branchUrl       = branchUrl;
-    task.github.branchCreatedAt = new Date();
-    await task.save();
-
-    await logActivity(
-      workspaceId,
-      req.user._id,
-      "github_branch_created",
-      { branch: branchName },
-      { entityType: "task", entityId: task._id }
-    );
-
-    emitToWs(workspaceId, "github:sync", {
-      taskId:    task._id.toString(),
-      github:    task.github,
-    });
-
-    console.log(`[GitHub] Branch created: ${branchName}`);
-  } catch (err) {
-    // Non-fatal — just warn
-    console.warn("[GitHub] Branch creation failed (non-fatal):", err.response?.data?.message || err.message);
-  }
-}
-
-/* ── Auto-PR creation (Item 5) ─────────────────────────────── */
-async function tryOpenPR(task, req, workspaceId) {
-  try {
-    const user = await User.findById(req.user._id).select("github");
-    if (!user?.github?.accessToken) return;
-
-    const workspace = await Workspace.findById(workspaceId);
-    if (!workspace?.github?.repoOwner) return;
-
-    const token  = decrypt(user.github.accessToken, user.github.tokenIv);
-    const owner  = workspace.github.repoOwner;
-    const repo   = workspace.github.repoName;
-    const base   = workspace.github.defaultBranch || "main";
-
-    const prRes = await axios.post(
-      `https://api.github.com/repos/${owner}/${repo}/pulls`,
-      {
-        title: task.title,
-        body:  `## ${task.title}\n\n${task.description || ""}\n\n---\n*Auto-created by DevSpace*`,
-        head:  task.github.branch,
-        base,
-      },
-      { headers: GH_HEADERS(token) }
-    );
-
-    const pr = prRes.data;
-    task.github.pr = {
-      number:   pr.number,
-      title:    pr.title,
-      url:      pr.html_url,
-      state:    "open",
-      openedAt: new Date(),
-    };
-    await task.save();
-
-    await logActivity(
-      workspaceId,
-      req.user._id,
-      "github_pr_opened",
-      { prNumber: pr.number, prUrl: pr.html_url },
-      { entityType: "task", entityId: task._id }
-    );
-
-    emitToWs(workspaceId, "github:sync", {
-      taskId: task._id.toString(),
-      github: task.github,
-    });
-
-    console.log(`[GitHub] PR opened: #${pr.number}`);
-  } catch (err) {
-    console.warn("[GitHub] PR creation failed (non-fatal):", err.response?.data?.message || err.message);
-  }
-}
 
 /* ═══════════════════════════════════════════════════════════════
    TASK CRUD
@@ -198,7 +62,9 @@ exports.createTask = async (req, res) => {
 exports.getTasks = async (req, res) => {
   try {
     const boardId = req.params.boardId;
-    const tasks = await Task.find({ board: boardId }).populate("assignedTo", "name email avatar");
+    const tasks = await Task.find({ board: boardId })
+      .populate("assignedTo", "name email avatar")
+      .populate("blockedBy", "status title");
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -339,6 +205,19 @@ exports.updateTaskStatus = async (req, res) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const oldStatus = task.status;
+
+    // Check blockers if moving to inprogress
+    if (status === "inprogress") {
+      const populatedTask = await Task.findById(taskId).populate("blockedBy");
+      const activeBlockers = populatedTask.blockedBy.filter(t => t.status !== "done");
+      if (activeBlockers.length > 0) {
+        return res.status(400).json({
+          error: "Task is blocked",
+          blockers: activeBlockers.map(t => ({ _id: t._id, title: t.title, status: t.status }))
+        });
+      }
+    }
+
     task.status = status;
     await task.save();
 
@@ -358,18 +237,188 @@ exports.updateTaskStatus = async (req, res) => {
         oldStatus,
       });
 
-      /* ── Item 3: Auto-create branch on inprogress ── */
-      if (status === "inprogress" && !task.github?.branch) {
-        setImmediate(() => tryCreateBranch(task, req, workspaceId));
-      }
-
-      /* ── Item 5: Auto-open PR on done ── */
-      if (status === "done" && task.github?.branch && !task.github?.pr?.number) {
-        setImmediate(() => tryOpenPR(task, req, workspaceId));
+      // Item 3: Unblock tasks if this is marked as done
+      if (status === "done" && task.blocking?.length > 0) {
+        for (const blockedTaskId of task.blocking) {
+          const blockedTask = await Task.findById(blockedTaskId).populate("blockedBy");
+          if (blockedTask) {
+            const activeBlockers = blockedTask.blockedBy.filter(t => t.status !== "done");
+            if (activeBlockers.length === 0) {
+              emitToWs(workspaceId, "task:unblocked", { taskId: blockedTask._id.toString() });
+            }
+          }
+        }
       }
     }
 
     res.json({ message: "Task status updated", task });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   DEPENDENCIES
+   ═══════════════════════════════════════════════════════════════ */
+exports.addDependency = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { blockedByTaskId } = req.body;
+
+    if (taskId === blockedByTaskId) {
+      return res.status(400).json({ message: "Task cannot block itself" });
+    }
+
+    const task = await Task.findById(taskId);
+    const blocker = await Task.findById(blockedByTaskId);
+
+    if (!task || !blocker) return res.status(404).json({ message: "Task not found" });
+
+    // Prevent circular dependency (simple 1-level)
+    if (blocker.blockedBy && blocker.blockedBy.includes(taskId)) {
+      return res.status(400).json({ message: "Circular dependency detected" });
+    }
+
+    if (!task.blockedBy.includes(blockedByTaskId)) {
+      task.blockedBy.push(blockedByTaskId);
+      await task.save();
+    }
+    if (!blocker.blocking.includes(taskId)) {
+      blocker.blocking.push(taskId);
+      await blocker.save();
+    }
+
+    const { workspaceId } = await getWorkspaceForTask(task) || {};
+    if (workspaceId) {
+      await logActivity(workspaceId, req.user._id, "dependency_added", {
+        blockedBy: blockedByTaskId,
+      }, { entityType: "task", entityId: task._id });
+
+      const blockers = await Task.find({ _id: { $in: task.blockedBy } });
+      emitToWs(workspaceId, "task:blocked", { taskId, blockers });
+    }
+
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.removeDependency = async (req, res) => {
+  try {
+    const { taskId, depId } = req.params;
+
+    const task = await Task.findById(taskId);
+    const blocker = await Task.findById(depId);
+
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    task.blockedBy = task.blockedBy.filter(id => id.toString() !== depId);
+    await task.save();
+
+    if (blocker) {
+      blocker.blocking = blocker.blocking.filter(id => id.toString() !== taskId);
+      await blocker.save();
+    }
+
+    const { workspaceId } = await getWorkspaceForTask(task) || {};
+    if (workspaceId) {
+      await logActivity(workspaceId, req.user._id, "dependency_removed", {}, { entityType: "task", entityId: task._id });
+      
+      const populatedTask = await Task.findById(taskId).populate("blockedBy");
+      const activeBlockers = populatedTask.blockedBy.filter(t => t.status !== "done");
+      if (activeBlockers.length === 0) {
+        emitToWs(workspaceId, "task:unblocked", { taskId });
+      }
+    }
+
+    res.json({ message: "Dependency removed", task });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getDependencies = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const task = await Task.findById(taskId)
+      .populate("blockedBy", "title status assignedTo")
+      .populate("blocking", "title status assignedTo");
+      
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    const populatedBlockedBy = await User.populate(task.blockedBy, { path: "assignedTo", select: "name" });
+    const populatedBlocking = await User.populate(task.blocking, { path: "assignedTo", select: "name" });
+
+    res.json({ blockedBy: populatedBlockedBy, blocking: populatedBlocking });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   GITHUB LINKS (READ-ONLY)
+   ═══════════════════════════════════════════════════════════════ */
+exports.addGithubLink = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { url } = req.body;
+
+    const task = await Task.findById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    let type = "pr";
+    if (url.includes("/commit/")) type = "commit";
+    else if (url.includes("/issues/")) type = "issue";
+
+    const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/(pull|commit|issues)\/([^\/]+)/);
+    let meta = {};
+
+    if (match) {
+      const owner = match[1];
+      const repo = match[2];
+      const numberOrSha = match[4];
+
+      try {
+        let apiUrl = "";
+        if (type === "pr") apiUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${numberOrSha}`;
+        else if (type === "commit") apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${numberOrSha}`;
+        else if (type === "issue") apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${numberOrSha}`;
+
+        const ghRes = await axios.get(apiUrl, { headers: { "User-Agent": "DevSpace" } });
+        const data = ghRes.data;
+
+        meta = {
+          title: data.title || data.commit?.message?.split("\n")[0],
+          number: data.number || null,
+          state: data.state || null,
+          author: data.user?.login || data.author?.login || data.commit?.author?.name,
+          fetchedAt: new Date()
+        };
+      } catch (ghErr) {
+        console.warn("Could not fetch GH meta (private or rate limit):", ghErr.message);
+      }
+    }
+
+    task.githubLinks = task.githubLinks || [];
+    task.githubLinks.push({ url, type, meta: Object.keys(meta).length > 0 ? meta : undefined });
+    await task.save();
+
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.removeGithubLink = async (req, res) => {
+  try {
+    const { taskId, linkId } = req.params;
+    const task = await Task.findById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    task.githubLinks = task.githubLinks.filter(l => l._id.toString() !== linkId);
+    await task.save();
+    res.json({ message: "Link removed", task });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,41 +1,6 @@
 const mongoose = require("mongoose");
 
-const commitSchema = new mongoose.Schema(
-  {
-    sha:       { type: String },
-    shortSha:  { type: String },
-    message:   { type: String },
-    author: {
-      name:      { type: String },
-      avatarUrl: { type: String },
-    },
-    url:         { type: String },
-    committedAt: { type: Date },
-  },
-  { _id: false }
-);
 
-const prSchema = new mongoose.Schema(
-  {
-    number:   { type: Number },
-    title:    { type: String },
-    url:      { type: String },
-    state:    { type: String, enum: ["open", "closed", "merged"] },
-    openedAt: { type: Date },
-  },
-  { _id: false }
-);
-
-const githubSchema = new mongoose.Schema(
-  {
-    branch:          { type: String },
-    branchUrl:       { type: String },
-    branchCreatedAt: { type: Date },
-    pr:              { type: prSchema, default: null },
-    commits:         { type: [commitSchema], default: [] },
-  },
-  { _id: false }
-);
 
 const taskSchema = new mongoose.Schema(
   {
@@ -92,8 +57,22 @@ const taskSchema = new mongoose.Schema(
       }
     ],
 
-    /* ── GitHub integration ─────────────────────────────────── */
-    github: { type: githubSchema, default: () => ({}) },
+    /* ── Dependencies ───────────────────────────────────────── */
+    blockedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
+    blocking:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
+
+    /* ── Read-Only GitHub Links ─────────────────────────────── */
+    githubLinks: [{
+      url: String,
+      type: { type: String, enum: ['pr', 'commit', 'issue'], default: 'pr' },
+      meta: {
+        title: String,
+        number: Number,
+        state: String,
+        author: String,
+        fetchedAt: Date
+      }
+    }]
   },
   { timestamps: true }
 );

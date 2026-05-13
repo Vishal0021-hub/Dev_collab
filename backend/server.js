@@ -54,25 +54,29 @@ const httpServer = http.createServer(app);
 const io = initSocket(httpServer);
 app.set("io", io);  // make io available to controllers via req.app.get("io")
 
-/* ── GitHub Webhook — MUST be before express.json() ────────────
-   express.raw() is applied at route level inside githubWebhook.js
-   but we register the route here early so Express sees it before
-   the global body-parser middleware that would consume req.body.
-   ─────────────────────────────────────────────────────────────── */
-const githubWebhookRoute = require("./routes/githubWebhook");
-app.use("/api/github", githubWebhookRoute);
+const { helmetMiddleware, generalLimiter, mongoSanitizeMiddleware, xssMiddleware, authLimiter, corsMiddleware } = require("./middleware/securityMiddleware");
 
-/* ── Body parsers (10mb limit for code snippets) ───────────────*/
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+/* 1. helmet */
+app.use(helmetMiddleware);
 
-/* ── HTTP Parameter Pollution protection ────────────────────────*/
-// Must come AFTER body parsers, BEFORE routes
+/* 2. rate-limit (general) */
+app.use("/api", generalLimiter);
+
+/* 3. hpp */
 app.use(hpp());
 
-/* ── Security middleware (helmet, cors, sanitizers, general rate-limit, morgan) ── */
-const { applySecurityMiddleware, authLimiter } = require("./middleware/securityMiddleware");
-applySecurityMiddleware(app);
+/* 4. cors */
+app.use(corsMiddleware);
+
+/* 5. sanitizers (mongo + xss) */
+app.use(mongoSanitizeMiddleware);
+app.use(xssMiddleware);
+
+/* 6. express.json (Body parsers) */
+app.use(express.json({ limit: "10mb" }));
+
+/* 7. express.urlencoded */
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 /* ── Database ──────────────────────────────────────────────────*/
 const ConnectDB = require("./config/db");
@@ -130,10 +134,6 @@ app.use("/api/dm", dmRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/api/notifications", notificationRoutes);
 
-/* ── Code Snippets ───────────────────────────────────────────── */
-const snippetRoutes = require("./routes/snippetRoutes");
-app.use("/api/snippets", snippetRoutes);
-
 /* ── Global Search ───────────────────────────────────────────── */
 const searchRoutes = require("./routes/searchRoutes");
 app.use("/api/search", searchRoutes);
@@ -141,10 +141,6 @@ app.use("/api/search", searchRoutes);
 /* ── Analytics ───────────────────────────────────────────────── */
 const analyticsRoutes = require("./routes/analyticsRoutes");
 app.use("/api/analytics", analyticsRoutes);
-
-/* ── GitHub OAuth + Repo management ─────────────────────────── */
-const githubRoutes = require("./routes/githubRoutes");
-app.use("/api/github", githubRoutes);
 
 /* ── Global error handler ────────────────────────────────────── */
 app.use((err, req, res, next) => {

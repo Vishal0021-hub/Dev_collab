@@ -108,47 +108,30 @@ const inviteLimiter = rateLimit({
   skip: () => process.env.NODE_ENV !== "production",
 });
 
-/* ── Register security middleware on the app ─────────────────── */
-function applySecurityMiddleware(app) {
-  // 1. Secure HTTP headers
-  //    Disable CSP in development so Vite's hot-reload inline scripts aren't blocked.
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:"],
-          "frame-src": ["'self'", "blob:"],
-          "img-src": ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
-          "connect-src": ["'self'", "https://api.cloudinary.com", "*"],
-        },
-      },
-      crossOriginEmbedderPolicy: false,
-      crossOriginResourcePolicy: { policy: "cross-origin" },
-      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
-    })
-  );
+/* ── Export Individual Middlewares for Ordered Registration ── */
+const helmetMiddleware = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:"],
+      "frame-src": ["'self'", "blob:"],
+      "img-src": ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+      "connect-src": ["'self'", "https://api.cloudinary.com", "*"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+});
 
-  // 2. CORS
-  app.use(cors(corsOptions));
-
-  // 3. NoSQL injection prevention (custom — avoids req.query mutation crash)
-  app.use(mongoSanitizeMiddleware);
-
-  // 4. XSS sanitization (custom — avoids req.query mutation crash)
-  app.use(xssMiddleware);
-
-  // 5. General API rate limit (100 req / 10 min)
-  app.use("/api", generalLimiter);
-
-  // 6. Request logger (development only)
-  if (process.env.NODE_ENV !== "production") {
-    app.use(morgan("dev"));
-  }
-}
+const corsMiddleware = cors(corsOptions);
 
 module.exports = {
-  applySecurityMiddleware,
+  helmetMiddleware,
+  corsMiddleware,
+  generalLimiter,
+  mongoSanitizeMiddleware,
+  xssMiddleware,
   authLimiter,
   inviteLimiter,
 };
