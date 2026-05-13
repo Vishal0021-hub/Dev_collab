@@ -1,7 +1,7 @@
 const { Server } = require("socket.io");
-const jwt        = require("jsonwebtoken");
-const User       = require("../models/User");
-const Workspace  = require("../models/workspace");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+const Workspace = require("../models/workspace");
 
 let _io = null;
 
@@ -53,7 +53,7 @@ function initSocket(httpServer) {
       ].filter(Boolean),
       credentials: true,
     },
-    pingTimeout:  60000,
+    pingTimeout: 60000,
     pingInterval: 25000,
   });
 
@@ -67,7 +67,7 @@ function initSocket(httpServer) {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user    = await User.findById(decoded.id).select("_id name avatar email");
+      const user = await User.findById(decoded.id).select("_id name avatar email");
       if (!user) {
         console.warn("[Socket] ✗ Auth failed: User not found in DB");
         return next(new Error("User not found"));
@@ -97,8 +97,8 @@ function initSocket(httpServer) {
 
         // Broadcast to everyone else in the workspace
         socket.to(room).emit("user:online", {
-          userId:      socket.user._id.toString(),
-          name:        socket.user.name,
+          userId: socket.user._id.toString(),
+          name: socket.user.name,
           workspaceId,
         });
 
@@ -135,7 +135,7 @@ function initSocket(httpServer) {
     socket.on("typing:start", ({ channelId }) => {
       socket.to(`ch:${channelId}`).emit("user:typing", {
         userId: socket.user._id.toString(),
-        name:   socket.user.name,
+        name: socket.user.name,
         channelId,
         isTyping: true,
       });
@@ -154,7 +154,7 @@ function initSocket(httpServer) {
       const dmKey = [socket.user._id.toString(), recipientId].sort().join(":");
       socket.to(`dm:${dmKey}`).emit("user:typing:dm", {
         userId: socket.user._id.toString(),
-        name:   socket.user.name,
+        name: socket.user.name,
         isTyping: true,
       });
     });
@@ -167,7 +167,110 @@ function initSocket(httpServer) {
       });
     });
 
+    /* ════════════════════════════════════════════════════════════
+       ──────────────────────────────────────────────────────────
+       ITEM 2 — SNIPPET COLLABORATIVE PAD SOCKET EVENTS
+       ──────────────────────────────────────────────────────────
+       ════════════════════════════════════════════════════════════ */
 
+    /**
+     * snippet:join — client opens a snippet pad.
+     * Joins the snippet room and announces presence to other editors.
+     */
+    socket.on("snippet:join", ({ snippetId }) => {
+      if (!snippetId) return;
+      const room = `snippet:${snippetId}`;
+      const color = colorForUser(socket.user._id.toString());
+
+      socket.join(room);
+
+      // Tell everyone else in the room that this user joined
+      socket.to(room).emit("snippet:presenceUpdate", {
+        snippetId,
+        event: "joined",
+        userId: socket.user._id.toString(),
+        name: socket.user.name,
+        color,
+      });
+
+      // Confirm to the joining user their assigned colour
+      socket.emit("snippet:yourColor", { snippetId, color });
+
+      console.log(`[Socket] snippet:join  ${socket.user.name} → ${snippetId}`);
+    });
+
+    /**
+     * snippet:leave — client closes the snippet pad.
+     * Leaves the room and notifies others.
+     */
+    socket.on("snippet:leave", ({ snippetId }) => {
+      if (!snippetId) return;
+      const room = `snippet:${snippetId}`;
+
+      socket.leave(room);
+
+      socket.to(room).emit("snippet:presenceUpdate", {
+        snippetId,
+        event: "left",
+        userId: socket.user._id.toString(),
+        name: socket.user.name,
+      });
+
+      console.log(`[Socket] snippet:leave ${socket.user.name} ← ${snippetId}`);
+    });
+
+    /**
+     * snippet:codeChange — relay code changes to everyone else in the snippet room.
+     * The sender's local state is already updated; we only push to others.
+     *
+     * Payload: { snippetId, code, version }
+     */
+    socket.on("snippet:codeChange", ({ snippetId, code, version }) => {
+      if (!snippetId) return;
+      socket.to(`snippet:${snippetId}`).emit("snippet:codeChange", {
+        snippetId,
+        code,
+        version,
+        userId: socket.user._id.toString(),
+      });
+    });
+
+    /**
+     * snippet:cursorMove — relay cursor position to everyone else.
+     * Used to render coloured cursor decorations in Monaco.
+     *
+     * Payload: { snippetId, line, column }
+     */
+    socket.on("snippet:cursorMove", ({ snippetId, line, column }) => {
+      if (!snippetId) return;
+      const color = colorForUser(socket.user._id.toString());
+      socket.to(`snippet:${snippetId}`).emit("snippet:cursorMove", {
+        snippetId,
+        userId: socket.user._id.toString(),
+        name: socket.user.name,
+        line,
+        column,
+        color,
+      });
+    });
+
+    /**
+     * snippet:saved — broadcast to the snippet room that a save occurred.
+     * Triggered by the controller after a successful PATCH.
+     * Also emitted by the client after auto-save succeeds (client-side emit
+     * is cheaper — no need for the client to call this; the controller does it).
+     *
+     * Payload: { snippetId, version, savedBy }
+     */
+    socket.on("snippet:saved", ({ snippetId, version, savedBy }) => {
+      if (!snippetId) return;
+      _io.to(`snippet:${snippetId}`).emit("snippet:saved", {
+        snippetId,
+        version,
+        savedBy: savedBy || socket.user._id.toString(),
+        savedByName: socket.user.name,
+      });
+    });
 
     /* ════════════════════════════════════════════════════════════
        TASK EVENTS (emitted from controllers via getIO())
@@ -187,12 +290,21 @@ function initSocket(httpServer) {
           const workspaceId = room.slice(3);
           markOffline(workspaceId, socket.user._id);
           socket.to(room).emit("user:offline", {
-            userId:      socket.user._id.toString(),
+            userId: socket.user._id.toString(),
             workspaceId,
           });
         }
 
-
+        // Notify snippet rooms that this user left
+        if (room.startsWith("snippet:")) {
+          const snippetId = room.slice(8);
+          socket.to(room).emit("snippet:presenceUpdate", {
+            snippetId,
+            event: "left",
+            userId: socket.user._id.toString(),
+            name: socket.user.name,
+          });
+        }
       });
     });
   });

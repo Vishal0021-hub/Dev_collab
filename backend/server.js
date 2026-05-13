@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
-const http    = require("http");
-const hpp     = require("hpp");
+const http = require("http");
+const hpp = require("hpp");
 const { initSocket } = require("./socket");
 
 /* ── Environment validator ──────────────────────────────────────
@@ -47,7 +47,7 @@ function validateEnv() {
 validateEnv();
 
 /* ── Express + HTTP server ──────────────────────────────────────*/
-const app        = express();
+const app = express();
 const httpServer = http.createServer(app);
 
 /* ── Socket.IO (must init before routes) ───────────────────────*/
@@ -55,6 +55,14 @@ const io = initSocket(httpServer);
 app.set("io", io);  // make io available to controllers via req.app.get("io")
 
 const { helmetMiddleware, generalLimiter, mongoSanitizeMiddleware, xssMiddleware, authLimiter, corsMiddleware } = require("./middleware/securityMiddleware");
+console.log({
+  helmetMiddleware,
+  generalLimiter,
+  mongoSanitizeMiddleware,
+  xssMiddleware,
+  authLimiter,
+  corsMiddleware
+});
 
 /* 1. helmet */
 app.use(helmetMiddleware);

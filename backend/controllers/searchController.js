@@ -3,7 +3,7 @@ const Board     = require("../models/Board");
 const Project   = require("../models/Project");
 const Channel   = require("../models/Channel");
 const Message   = require("../models/Message");
-const Workspace = require("../models/Workspace");
+const Workspace = require("../models/workspace");
 const mongoose  = require("mongoose");
 
 // ── Helper: regex search (case-insensitive) ───────────────────

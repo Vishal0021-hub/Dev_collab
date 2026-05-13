@@ -3,7 +3,7 @@ const Task = require("../models/Task");
 const Board = require("../models/Board");
 const Project = require("../models/Project");
 const Message = require("../models/Message");
-const CodeSnippet = require("../models/CodeSnippet");
+
 const Workspace = require("../models/workspace");
 
 /* ── Helper: get all board IDs inside a workspace ─────────────── */
@@ -155,7 +155,7 @@ exports.getAnalytics = async (req, res) => {
       : [];
 
     /* ── 6. Top contributors score ──────────────────────────
-       score = (tasksCompleted × 3) + (messages × 1) + (snippetsCreated × 2)
+       score = (tasksCompleted × 3) + (messages × 1)
        ─────────────────────────────────────────────────────── */
     const memberIds = workspace.members
       .map(m => m.userId?._id || m.userId)
@@ -165,15 +165,11 @@ exports.getAnalytics = async (req, res) => {
     const channels = await require("../models/Channel").find({ workspace: workspaceId }).select("_id");
     const channelIds = channels.map(c => c._id);
 
-    const [msgCounts, snippetCounts, taskCounts] = await Promise.all([
+    const [msgCounts, taskCounts] = await Promise.all([
       channelIds.length ? Message.aggregate([
         { $match: { channel: { $in: channelIds }, sender: { $in: memberIds }, createdAt: { $gte: since } } },
         { $group: { _id: "$sender", count: { $sum: 1 } } },
       ]) : [],
-      CodeSnippet.aggregate([
-        { $match: { workspaceId: new mongoose.Types.ObjectId(workspaceId), createdBy: { $in: memberIds }, createdAt: { $gte: since } } },
-        { $group: { _id: "$createdBy", count: { $sum: 1 } } },
-      ]),
       boardIds.length ? Task.aggregate([
         { $match: { board: { $in: boardIds }, status: "done", assignedTo: { $in: memberIds }, updatedAt: { $gte: since } } },
         { $group: { _id: "$assignedTo", count: { $sum: 1 } } },
@@ -184,9 +180,8 @@ exports.getAnalytics = async (req, res) => {
       .map(m => {
         const uid = (m.userId?._id || m.userId)?.toString();
         const msgs = msgCounts.find(x => x._id?.toString() === uid)?.count || 0;
-        const snippets = snippetCounts.find(x => x._id?.toString() === uid)?.count || 0;
         const done = taskCounts.find(x => x._id?.toString() === uid)?.count || 0;
-        const score = (done * 3) + (msgs * 1) + (snippets * 2);
+        const score = (done * 3) + (msgs * 1);
         return {
           userId: uid,
           name: m.userId?.name || "Unknown",
@@ -195,7 +190,6 @@ exports.getAnalytics = async (req, res) => {
           score,
           tasksCompleted: done,
           messages: msgs,
-          snippets,
         };
       })
       .sort((a, b) => b.score - a.score)

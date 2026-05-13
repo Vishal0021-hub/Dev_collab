@@ -1,13 +1,13 @@
-const helmet    = require("helmet");
-const cors      = require("cors");
+const helmet = require("helmet");
+const cors = require("cors");
 const rateLimit = require("express-rate-limit");
-const morgan    = require("morgan");
+const morgan = require("morgan");
 
 /* ── CORS ────────────────────────────────────────────────────── */
 const corsOptions = {
-  origin:         process.env.CLIENT_URL || "http://localhost:5173",
-  credentials:    true,
-  methods:        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
@@ -30,7 +30,7 @@ function sanitizeObject(obj) {
 
 function mongoSanitizeMiddleware(req, _res, next) {
   // Sanitize body and params only — req.query is read-only in Node 18+
-  if (req.body)   sanitizeObject(req.body);
+  if (req.body) sanitizeObject(req.body);
   if (req.params) sanitizeObject(req.params);
   next();
 }
@@ -43,7 +43,7 @@ const XSS_PATTERN = /<[^>]*>|javascript:/gi;
 
 function stripXss(value) {
   if (typeof value === "string") return value.replace(XSS_PATTERN, "");
-  if (Array.isArray(value))     return value.map(stripXss);
+  if (Array.isArray(value)) return value.map(stripXss);
   if (value && typeof value === "object") {
     for (const k of Object.keys(value)) value[k] = stripXss(value[k]);
   }
@@ -128,10 +128,10 @@ const corsMiddleware = cors(corsOptions);
 
 module.exports = {
   helmetMiddleware,
-  corsMiddleware,
   generalLimiter,
   mongoSanitizeMiddleware,
   xssMiddleware,
   authLimiter,
+  corsMiddleware,
   inviteLimiter,
 };

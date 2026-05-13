@@ -12,38 +12,36 @@ import ActivityLog from "../components/ActivityLog";
 import AssignDropdown from "../components/AssignDropdown";
 import NotificationBell from "../components/NotificationBell";
 import AttachmentPanel from "../components/AttachmentPanel";
+
 import { BoardSkeleton } from "../components/Skeletons";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useSocket } from "../context/SocketContext";
 
 /* ─── Icons ──────────────────────────────────────────────────── */
-const IconPlus      = ({ size=16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-const IconBack      = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>;
-const IconTrash     = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>;
-const IconEdit      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
-const IconCalendar  = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-const IconActivity  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
-const IconUsers     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-const IconGithub    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>;
-const IconGitBranch = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>;
-const IconGitPR     = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/></svg>;
-const IconGitCommit = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>;
-const IconLock      = ({ size=12 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-const IconSearch    = ({ size=14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
-const IconLink      = ({ size=14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>;
+const IconPlus = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
+const IconBack = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>;
+const IconTrash = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>;
+const IconEdit = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
+const IconCalendar = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>;
+const IconActivity = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>;
+const IconUsers = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+const IconGithub = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" /></svg>;
+const IconGitBranch = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" /></svg>;
+const IconGitPR = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle cx="18" cy="6" r="3" /><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /></svg>;
+const IconGitCommit = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><line x1="1.05" y1="12" x2="7" y2="12" /><line x1="17.01" y1="12" x2="22.96" y2="12" /></svg>;
 
 /* ─── Priority config ──────────────────────────────────────────── */
 const PRIORITY_CONFIG = {
-  high:   { label: "High",   bg: "rgba(239,68,68,0.15)",   color: "#f87171", dot: "#ef4444" },
-  medium: { label: "Med",    bg: "rgba(245,158,11,0.15)",  color: "#fbbf24", dot: "#f59e0b" },
-  low:    { label: "Low",    bg: "rgba(16,185,129,0.15)",  color: "#34d399", dot: "#10b981" },
+  high: { label: "High", bg: "rgba(239,68,68,0.15)", color: "#f87171", dot: "#ef4444" },
+  medium: { label: "Med", bg: "rgba(245,158,11,0.15)", color: "#fbbf24", dot: "#f59e0b" },
+  low: { label: "Low", bg: "rgba(16,185,129,0.15)", color: "#34d399", dot: "#10b981" },
 };
 
 const STATUS_STEPS = [
-  { key: "todo",       label: "Todo",        color: "#94a3b8", icon: "○" },
+  { key: "todo", label: "Todo", color: "#94a3b8", icon: "○" },
   { key: "inprogress", label: "In Progress", color: "#fbbf24", icon: "◑" },
-  { key: "review",     label: "Review",      color: "#818cf8", icon: "◕" },
-  { key: "done",       label: "Done",        color: "#34d399", icon: "●" },
+  { key: "review", label: "Review", color: "#818cf8", icon: "◕" },
+  { key: "done", label: "Done", color: "#34d399", icon: "●" },
 ];
 
 const formatDate = (d) => {
@@ -55,57 +53,48 @@ const isOverdue = (d) => d && new Date(d) < new Date();
 /* ═══════════════════════════════════════════════════════════════ */
 const Board = () => {
   const { projectId } = useParams();
-  const navigate      = useNavigate();
-  const location      = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { setActiveWorkspace, workspaces } = useWorkspace();
 
   // workspaceId can come from navigation state (from Projects page) or from project fetch
   const [workspaceId, setWorkspaceId] = useState(location.state?.workspaceId || null);
 
-  const [boards,  setBoards]  = useState([]);
-  const [tasks,   setTasks]   = useState([]);
+  const [boards, setBoards] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState([]);
   const [userRole, setUserRole] = useState("member");
 
   // Sidebars
-  const [showMembers,  setShowMembers]  = useState(false);
-  const [showInvite,   setShowInvite]   = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
 
   // Column creation
-  const [colName,    setColName]    = useState("");
+  const [colName, setColName] = useState("");
   const [isColModal, setIsColModal] = useState(false);
   const [colLoading, setColLoading] = useState(false);
 
   // Task modal
-  const [taskModal,    setTaskModal]    = useState(null);
-  const [modalTab,     setModalTab]     = useState("details"); // "details" | "attachments" | "code"
-  const [taskForm,     setTaskForm]     = useState({
+  const [taskModal, setTaskModal] = useState(null);
+  const [modalTab, setModalTab] = useState("details"); // "details" | "attachments" | "code"
+  const [taskForm, setTaskForm] = useState({
     title: "", description: "", priority: "medium", dueDate: "", assignedTo: "", status: "todo"
   });
-
-  // Dependencies search
-  const [depSearch, setDepSearch] = useState("");
-  const [depResults, setDepResults] = useState([]);
-  const [depLoading, setDepLoading] = useState(false);
-
-  // GitHub Link
-  const [ghLinkUrl, setGhLinkUrl] = useState("");
-  const [ghLinkLoading, setGhLinkLoading] = useState(false);
 
   /* ── Fetch on mount ── */
   useEffect(() => {
     fetchProject();
     fetchBoards();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   // When workspaceId becomes known (from state or fetchProject), load members
   useEffect(() => {
     if (workspaceId) fetchMembers(workspaceId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
   const fetchProject = async () => {
@@ -187,38 +176,20 @@ const Board = () => {
       }
     };
 
-    const onTaskBlocked = ({ taskId, blockers }) => {
-      setTasks(prev => prev.map(t => normalizeId(t._id) === normalizeId(taskId) ? { ...t, blockedBy: blockers } : t));
-      if (taskModal?.task?._id === taskId) {
-        setTaskModal(prev => ({ ...prev, task: { ...prev.task, blockedBy: blockers } }));
-      }
-    };
-
-    const onTaskUnblocked = ({ taskId }) => {
-      setTasks(prev => prev.map(t => normalizeId(t._id) === normalizeId(taskId) ? { ...t, blockedBy: [] } : t));
-      if (taskModal?.task?._id === taskId) {
-        setTaskModal(prev => ({ ...prev, task: { ...prev.task, blockedBy: [] } }));
-      }
-    };
-
-    socket.on("task:created",       onTaskCreated);
-    socket.on("task:moved",         onTaskMoved);
-    socket.on("task:deleted",       onTaskDeleted);
-    socket.on("task:assigned",      onTaskAssigned);
+    socket.on("task:created", onTaskCreated);
+    socket.on("task:moved", onTaskMoved);
+    socket.on("task:deleted", onTaskDeleted);
+    socket.on("task:assigned", onTaskAssigned);
     socket.on("task:statusChanged", onStatusChanged);
-    socket.on("github:sync",        onGitHubSync);
-    socket.on("task:blocked",       onTaskBlocked);
-    socket.on("task:unblocked",     onTaskUnblocked);
+    socket.on("github:sync", onGitHubSync);
 
     return () => {
-      socket.off("task:created",       onTaskCreated);
-      socket.off("task:moved",         onTaskMoved);
-      socket.off("task:deleted",       onTaskDeleted);
-      socket.off("task:assigned",      onTaskAssigned);
+      socket.off("task:created", onTaskCreated);
+      socket.off("task:moved", onTaskMoved);
+      socket.off("task:deleted", onTaskDeleted);
+      socket.off("task:assigned", onTaskAssigned);
       socket.off("task:statusChanged", onStatusChanged);
-      socket.off("github:sync",        onGitHubSync);
-      socket.off("task:blocked",       onTaskBlocked);
-      socket.off("task:unblocked",     onTaskUnblocked);
+      socket.off("github:sync", onGitHubSync);
     };
   }, [socket, workspaceId, taskModal?.task?._id]);
 
@@ -304,12 +275,12 @@ const Board = () => {
 
   const openEditTask = (task) => {
     setTaskForm({
-      title:       task.title || "",
+      title: task.title || "",
       description: task.description || "",
-      priority:    task.priority || "medium",
-      dueDate:     task.dueDate ? task.dueDate.slice(0, 10) : "",
-      assignedTo:  task.assignedTo?._id || task.assignedTo || "",
-      status:      task.status || "todo",
+      priority: task.priority || "medium",
+      dueDate: task.dueDate ? task.dueDate.slice(0, 10) : "",
+      assignedTo: task.assignedTo?._id || task.assignedTo || "",
+      status: task.status || "todo",
     });
     setTaskModal({ mode: "edit", boardId: task.board, task });
     setModalTab("details");
@@ -332,10 +303,10 @@ const Board = () => {
   const submitTaskModal = async (e) => {
     e.preventDefault();
     const payload = {
-      title:       taskForm.title.trim(),
+      title: taskForm.title.trim(),
       description: taskForm.description.trim(),
-      priority:    taskForm.priority,
-      dueDate:     taskForm.dueDate || null,
+      priority: taskForm.priority,
+      dueDate: taskForm.dueDate || null,
     };
     const t = toast.loading(`${taskModal.mode === "add" ? "Creating" : "Updating"} task…`);
     try {
@@ -373,94 +344,9 @@ const Board = () => {
     } catch { fetchBoards(); }
   };
 
-  /* ── Dependency Management ── */
-  const searchTasks = async (query) => {
-    setDepSearch(query);
-    if (query.length < 2) {
-      setDepResults([]);
-      return;
-    }
-    setDepLoading(true);
-    try {
-      // Find tasks in this workspace but NOT the current task
-      const res = await API.get(`/search?q=${query}&type=tasks&workspaceId=${workspaceId}`);
-      setDepResults(res.data.filter(t => t._id !== taskModal?.task?._id));
-    } catch (err) {
-      console.error("searchTasks:", err);
-    } finally {
-      setDepLoading(false);
-    }
-  };
-
-  const addDependency = async (blockerId) => {
-    try {
-      const res = await API.post(`/tasks/${taskModal.task._id}/dependencies`, { blockedByTaskId: blockerId });
-      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, blockedBy: [...(t.blockedBy || []), res.data.blockedBy.at(-1)] } : t));
-      setTaskModal(prev => ({
-        ...prev,
-        task: { ...prev.task, blockedBy: [...(prev.task.blockedBy || []), res.data.blockedBy.at(-1)] }
-      }));
-      setDepSearch("");
-      setDepResults([]);
-      toast.success("Dependency added");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to add dependency");
-    }
-  };
-
-  const removeDependency = async (depId) => {
-    try {
-      await API.delete(`/tasks/${taskModal.task._id}/dependencies/${depId}`);
-      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, blockedBy: t.blockedBy.filter(b => b._id !== depId) } : t));
-      setTaskModal(prev => ({
-        ...prev,
-        task: { ...prev.task, blockedBy: prev.task.blockedBy.filter(b => b._id !== depId) }
-      }));
-      toast.success("Dependency removed");
-    } catch (err) {
-      toast.error("Failed to remove dependency");
-    }
-  };
-
-  /* ── GitHub Links (Read-Only) ── */
-  const addGithubLink = async (e) => {
-    e.preventDefault();
-    if (!ghLinkUrl.trim()) return;
-    setGhLinkLoading(true);
-    try {
-      const res = await API.post(`/tasks/${taskModal.task._id}/github-links`, { url: ghLinkUrl.trim() });
-      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, githubLinks: res.data.githubLinks } : t));
-      setTaskModal(prev => ({ ...prev, task: { ...prev.task, githubLinks: res.data.githubLinks } }));
-      setGhLinkUrl("");
-      toast.success("Link added");
-    } catch (err) {
-      toast.error("Failed to add link");
-    } finally {
-      setGhLinkLoading(false);
-    }
-  };
-
-  const removeGithubLink = async (linkId) => {
-    try {
-      await API.delete(`/tasks/${taskModal.task._id}/github-links/${linkId}`);
-      setTasks(prev => prev.map(t => t._id === taskModal.task._id ? { ...t, githubLinks: t.githubLinks.filter(l => l._id !== linkId) } : t));
-      setTaskModal(prev => ({ ...prev, task: { ...prev.task, githubLinks: prev.task.githubLinks.filter(l => l._id !== linkId) } }));
-      toast.success("Link removed");
-    } catch (err) {
-      toast.error("Failed to remove link");
-    }
-  };
-
   /* ── Drag & drop ── */
   const onDragEnd = async ({ source, destination, draggableId }) => {
     if (!destination || source.droppableId === destination.droppableId) return;
-    
-    const task = tasks.find(t => t._id === draggableId);
-    if (task?.blockedBy?.some(b => b.status !== 'done')) {
-      toast.error("This task is blocked by unfinished dependencies", { icon: "🔒" });
-      return;
-    }
-
     setTasks(prev => prev.map(t =>
       t._id === draggableId ? { ...t, board: destination.droppableId } : t
     ));
@@ -471,8 +357,8 @@ const Board = () => {
 
   /* ── Derived stats ── */
   const totalTasks = tasks.length;
-  const doneTasks  = tasks.filter(t => t.status === "done").length;
-  const pctDone    = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const doneTasks = tasks.filter(t => t.status === "done").length;
+  const pctDone = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   const isAdmin = userRole === "owner" || userRole === "admin";
 
@@ -496,8 +382,8 @@ const Board = () => {
           <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", padding: 6, borderRadius: 8, transition: "color 0.2s" }}
             onMouseEnter={e => e.currentTarget.style.color = "#fff"}
             onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.4)"}
-          ><IconBack/></button>
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)" }}/>
+          ><IconBack /></button>
+          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)" }} />
           <div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>Project</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{project?.name || "Board"}</div>
@@ -507,7 +393,7 @@ const Board = () => {
           {totalTasks > 0 && (
             <div style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "4px 14px" }}>
               <div style={{ width: 80, height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${pctDone}%`, background: "#34d399", borderRadius: 4, transition: "width 0.4s ease" }}/>
+                <div style={{ height: "100%", width: `${pctDone}%`, background: "#34d399", borderRadius: 4, transition: "width 0.4s ease" }} />
               </div>
               <span style={{ fontSize: 12, fontWeight: 600, color: "#34d399" }}>{pctDone}%</span>
               <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{doneTasks}/{totalTasks} done</span>
@@ -526,18 +412,18 @@ const Board = () => {
               );
             })}
 
-            <NotificationBell/>
+            <NotificationBell />
 
             <button onClick={() => setShowActivity(p => !p)} style={{ background: showActivity ? "rgba(99,102,241,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,0.7)", transition: "all 0.2s" }} title="Activity">
-              <IconActivity/>
+              <IconActivity />
             </button>
             <button onClick={() => setShowMembers(p => !p)} style={{ background: showMembers ? "rgba(99,102,241,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,0.7)", transition: "all 0.2s" }} title="Members">
-              <IconUsers/>
+              <IconUsers />
             </button>
 
             {isAdmin && (
               <button onClick={() => setIsColModal(true)} style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                <IconPlus size={13}/> Add Column
+                <IconPlus size={13} /> Add Column
               </button>
             )}
           </div>
@@ -547,8 +433,8 @@ const Board = () => {
         <div style={{ flex: 1, overflowX: "auto", overflowY: "hidden", padding: "20px 24px" }}>
           {loading ? (
             <div style={{ display: "flex", gap: 16 }}>
-              {[1,2,3,4].map(i => (
-                <div key={i} style={{ flexShrink: 0, width: 300, height: 480, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i*120}ms` }}/>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} style={{ flexShrink: 0, width: 300, height: 480, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i * 120}ms` }} />
               ))}
             </div>
           ) : boards.length === 0 ? (
@@ -596,12 +482,12 @@ const Board = () => {
                                 onMouseEnter={e => e.currentTarget.style.color = "#818cf8"}
                                 onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.4)"}
                                 title="Add task"
-                              ><IconPlus size={14}/></button>
+                              ><IconPlus size={14} /></button>
                               <button onClick={() => deleteBoard(board._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", padding: 4, borderRadius: 6, display: "flex", transition: "color 0.15s" }}
                                 onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                                 onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.4)"}
                                 title="Delete column"
-                              ><IconTrash/></button>
+                              ><IconTrash /></button>
                             </div>
                           )}
                         </div>
@@ -609,7 +495,7 @@ const Board = () => {
                         {boardTasks.length > 0 && (
                           <div>
                             <div style={{ height: 3, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
-                              <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#34d399" : "#6366f1", borderRadius: 3, transition: "width 0.4s ease" }}/>
+                              <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#34d399" : "#6366f1", borderRadius: 3, transition: "width 0.4s ease" }} />
                             </div>
                             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 3, textAlign: "right" }}>{pct}% complete</div>
                           </div>
@@ -659,20 +545,17 @@ const Board = () => {
                                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                           <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: pCfg.bg, color: pCfg.color, textTransform: "uppercase", letterSpacing: "0.08em" }}>{pCfg.label}</span>
                                           <span style={{ fontSize: 10, fontWeight: 600, color: statusStep.color }}>{statusStep.icon} {statusStep.label}</span>
-                                          {task.blockedBy?.some(b => b.status !== 'done') && (
-                                            <span title="Blocked" style={{ display: "flex", color: "#f87171" }}><IconLock size={12}/></span>
-                                          )}
                                         </div>
                                         <div style={{ display: "flex", gap: 2 }} onClick={e => e.stopPropagation()}>
                                           <button onClick={() => openEditTask(task)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", padding: 3, borderRadius: 5, transition: "color 0.15s" }}
                                             onMouseEnter={e => e.currentTarget.style.color = "#818cf8"}
                                             onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.3)"}
-                                          ><IconEdit/></button>
+                                          ><IconEdit /></button>
                                           {isAdmin && (
                                             <button onClick={() => deleteTask(task._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", padding: 3, borderRadius: 5, transition: "color 0.15s" }}
                                               onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                                               onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.3)"}
-                                            ><IconTrash/></button>
+                                            ><IconTrash /></button>
                                           )}
                                         </div>
                                       </div>
@@ -687,7 +570,26 @@ const Board = () => {
                                         </div>
                                       )}
 
-
+                                      {/* GitHub Indicators */}
+                                      {task.github && (task.github.branch || task.github.pr || (task.github.commits && task.github.commits.length > 0)) && (
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 12px", marginBottom: 8, padding: "6px 8px", background: "rgba(99,102,241,0.06)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.1)" }}>
+                                          {task.github.branch && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#818cf8", fontSize: 10, fontWeight: 600 }} title={`Branch: ${task.github.branch}`}>
+                                              <IconGitBranch /> <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.github.branch}</span>
+                                            </div>
+                                          )}
+                                          {task.github.commits?.length > 0 && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: 600 }}>
+                                              <IconGitCommit /> {task.github.commits.length}
+                                            </div>
+                                          )}
+                                          {task.github.pr && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 4, color: task.github.pr.state === "merged" ? "#a78bfa" : task.github.pr.state === "open" ? "#34d399" : "#f87171", fontSize: 10, fontWeight: 700 }}>
+                                              <IconGitPR /> PR #{task.github.pr.number}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
 
                                       {/* Footer: Avatar + Due date */}
                                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
@@ -698,11 +600,11 @@ const Board = () => {
                                             </div>
                                             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{task.assignedTo.name}</span>
                                           </div>
-                                        ) : <span/>}
+                                        ) : <span />}
 
                                         {task.dueDate && (
                                           <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: overdue ? "#f87171" : "rgba(255,255,255,0.4)" }}>
-                                            <IconCalendar/> {formatDate(task.dueDate)}{overdue && " ⚠"}
+                                            <IconCalendar /> {formatDate(task.dueDate)}{overdue && " ⚠"}
                                           </div>
                                         )}
                                       </div>
@@ -729,7 +631,7 @@ const Board = () => {
                           onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; e.currentTarget.style.color = "#818cf8"; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.35)"; }}
                         >
-                          <IconPlus size={12}/> Add Task
+                          <IconPlus size={12} /> Add Task
                         </button>
                       )}
                     </div>
@@ -742,7 +644,7 @@ const Board = () => {
                     onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; e.currentTarget.style.color = "#818cf8"; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
                   >
-                    <IconPlus size={18}/> Add Column
+                    <IconPlus size={18} /> Add Column
                   </button>
                 )}
               </div>
@@ -754,8 +656,8 @@ const Board = () => {
         {showMembers && (
           <div style={{ position: "fixed", inset: 0, zIndex: 200 }} onClick={() => setShowMembers(false)}>
             <div style={{ position: "absolute", right: 0, top: 0, width: 380, height: "100vh", background: "rgba(10,13,22,0.98)", borderLeft: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }} onClick={e => e.stopPropagation()}>
-        <MembersSidebar workspaceId={workspaceId} members={members} userRole={userRole} showMembers={showMembers}
-                onUpdate={() => fetchMembers(workspaceId)} onClose={() => setShowMembers(false)} onInviteOpen={() => { setShowMembers(false); setShowInvite(true); }}/>
+              <MembersSidebar workspaceId={workspaceId} members={members} userRole={userRole} showMembers={showMembers}
+                onUpdate={() => fetchMembers(workspaceId)} onClose={() => setShowMembers(false)} onInviteOpen={() => { setShowMembers(false); setShowInvite(true); }} />
             </div>
           </div>
         )}
@@ -767,13 +669,13 @@ const Board = () => {
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>Activity</h3>
                 <button onClick={() => setShowActivity(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.5)", fontSize: 20 }}>×</button>
               </div>
-              <ActivityLog workspaceId={workspaceId}/>
+              <ActivityLog workspaceId={workspaceId} />
             </div>
           </div>
         )}
 
         {showInvite && (
-          <InviteModal workspaceId={workspaceId} onClose={() => setShowInvite(false)} onInviteSent={() => fetchMembers(workspaceId)}/>
+          <InviteModal workspaceId={workspaceId} onClose={() => setShowInvite(false)} onInviteSent={() => fetchMembers(workspaceId)} />
         )}
 
         {/* ── Create Column Modal ── */}
@@ -812,17 +714,19 @@ const Board = () => {
                 {taskModal.mode === "add" ? "New Task" : taskModal.task?.title || "Edit Task"}
               </div>
 
+              {/* ── Tabs (edit mode only) ── */}
+              {taskModal.mode === "edit" && (
                 <div style={{ display: "flex", gap: 2, marginBottom: 20, marginTop: 12, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
                   {[
-                    { key: "details",      label: "📋 Details" },
-                    { key: "attachments",  label: "📎 Files" },
-                    { key: "dependencies", label: "🔒 Blockers" },
-                    { key: "links",        label: "🔗 Links" },
+                    { key: "details", label: "📋 Details" },
+                    { key: "attachments", label: "📎 Attachments" },
+                    { key: "github", label: "🐙 GitHub" },
+                    { key: "code", label: "</> Code" },
                   ].map(tab => (
                     <button key={tab.key} type="button" onClick={() => setModalTab(tab.key)}
                       style={{
-                        flex: 1, border: "none", borderRadius: 8, padding: "7px 4px",
-                        cursor: "pointer", fontSize: 11, fontWeight: 600, transition: "all 0.15s",
+                        flex: 1, border: "none", borderRadius: 8, padding: "7px 10px",
+                        cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.15s",
                         background: modalTab === tab.key ? "rgba(99,102,241,0.2)" : "transparent",
                         color: modalTab === tab.key ? "#818cf8" : "rgba(255,255,255,0.4)",
                         borderBottom: modalTab === tab.key ? "2px solid #6366f1" : "2px solid transparent",
@@ -830,6 +734,7 @@ const Board = () => {
                     >{tab.label}</button>
                   ))}
                 </div>
+              )}
 
               {/* ── Details Tab (+ add mode) ── */}
               {(modalTab === "details" || taskModal.mode === "add") && (
@@ -843,10 +748,11 @@ const Board = () => {
                         {STATUS_STEPS.map((s) => {
                           const isActive = (taskModal.task?.status || taskForm.status) === s.key;
                           const stepIdx = STATUS_STEPS.findIndex(x => x.key === (taskModal.task?.status || taskForm.status));
-                          const isPast  = STATUS_STEPS.findIndex(x => x.key === s.key) < stepIdx;
+                          const isPast = STATUS_STEPS.findIndex(x => x.key === s.key) < stepIdx;
                           return (
                             <button key={s.key} type="button" onClick={() => updateTaskStatus(taskModal.task._id, s.key)}
-                              style={{ flex: 1, border: "none", borderRadius: 9, padding: "8px 4px", cursor: "pointer", fontWeight: isActive ? 700 : 500, fontSize: 11, transition: "all 0.2s",
+                              style={{
+                                flex: 1, border: "none", borderRadius: 9, padding: "8px 4px", cursor: "pointer", fontWeight: isActive ? 700 : 500, fontSize: 11, transition: "all 0.2s",
                                 background: isActive ? s.color + "25" : "transparent",
                                 color: isActive ? s.color : isPast ? s.color + "90" : "rgba(255,255,255,0.3)",
                                 borderBottom: isActive ? `2px solid ${s.color}` : "2px solid transparent",
@@ -864,7 +770,7 @@ const Board = () => {
                         const col = STATUS_STEPS[idx]?.color || "#94a3b8";
                         return (
                           <div style={{ height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 4, marginTop: 8, overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${pct}%`, background: col, borderRadius: 4, transition: "width 0.4s ease" }}/>
+                            <div style={{ height: "100%", width: `${pct}%`, background: col, borderRadius: 4, transition: "width 0.4s ease" }} />
                           </div>
                         );
                       })()}
@@ -873,11 +779,11 @@ const Board = () => {
 
                   <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Title *</label>
                   <input autoFocus required value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="Task title…"
-                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }}/>
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }} />
 
                   <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Description</label>
                   <textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description…" rows={3}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }}/>
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }} />
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                     <div>
@@ -892,15 +798,15 @@ const Board = () => {
                     <div>
                       <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Due Date</label>
                       <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))}
-                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", colorScheme: "dark", boxSizing: "border-box" }}/>
+                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", colorScheme: "dark", boxSizing: "border-box" }} />
                     </div>
                   </div>
 
                   {isAdmin && (
                     <>
                       <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Assign To</label>
-                      <AssignDropdown members={members} selectedId={taskForm.assignedTo} onSelect={uid => setTaskForm(f => ({ ...f, assignedTo: uid }))}/>
-                      <div style={{ marginBottom: 8 }}/>
+                      <AssignDropdown members={members} selectedId={taskForm.assignedTo} onSelect={uid => setTaskForm(f => ({ ...f, assignedTo: uid }))} />
+                      <div style={{ marginBottom: 8 }} />
                     </>
                   )}
 
@@ -918,105 +824,81 @@ const Board = () => {
                 <AttachmentPanel taskId={taskModal.task._id} isAdmin={isAdmin} />
               )}
 
-              {/* ── Dependencies Tab ── */}
-              {modalTab === "dependencies" && taskModal.mode === "edit" && (
-                <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Add Dependency</label>
-                  <div style={{ position: "relative", marginBottom: 20 }}>
-                    <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }}><IconSearch/></div>
-                    <input
-                      value={depSearch} onChange={e => searchTasks(e.target.value)}
-                      placeholder="Search tasks to add as dependency…"
-                      style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 12px 12px 36px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                    />
-                    {depLoading && <div style={{ position: "absolute", right: 12, top: "35%", fontSize: 10, color: "#818cf8" }}>Searching…</div>}
-                    
-                    {depResults.length > 0 && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#1a1d26", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, marginTop: 4, zIndex: 10, maxHeight: 200, overflowY: "auto", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
-                        {depResults.map(res => (
-                          <div key={res._id} onClick={() => addDependency(res._id)}
-                            style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", transition: "background 0.2s" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
-                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                          >
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{res.title}</div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{res.status.toUpperCase()}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ marginTop: 24 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>Blocked By ({taskModal.task.blockedBy?.length || 0})</label>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {(!taskModal.task.blockedBy || taskModal.task.blockedBy.length === 0) ? (
-                        <div style={{ textAlign: "center", padding: "24px 0", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>No active dependencies</div>
-                      ) : (
-                        taskModal.task.blockedBy.map(b => (
-                          <div key={b._id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: b.status === 'done' ? "rgba(255,255,255,0.4)" : "#fff", textDecoration: b.status === 'done' ? 'line-through' : 'none' }}>{b.title}</div>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: b.status === 'done' ? "#34d399" : "#fbbf24", marginTop: 2 }}>{b.status.toUpperCase()}</div>
-                            </div>
-                            <button onClick={() => removeDependency(b._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.2)", fontSize: 18 }}>×</button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* ── Code Tab ── */}
+              {modalTab === "code" && taskModal.mode === "edit" && (
+                <MonacoEditorPanel taskId={taskModal.task._id} taskTitle={taskModal.task?.title} />
               )}
 
-              {/* ── Links Tab ── */}
-              {modalTab === "links" && taskModal.mode === "edit" && (
+              {/* ── GitHub Tab ── */}
+              {modalTab === "github" && taskModal.mode === "edit" && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Add GitHub Link</label>
-                  <form onSubmit={addGithubLink} style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-                    <div style={{ position: "relative", flex: 1 }}>
-                      <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }}><IconLink/></div>
-                      <input
-                        value={ghLinkUrl} onChange={e => setGhLinkUrl(e.target.value)}
-                        placeholder="Paste PR or Commit URL…"
-                        style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 10px 10px 36px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                      />
+                  {!taskModal.task.github ? (
+                    <div style={{ textAlign: "center", padding: "40px 0", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px dashed rgba(255,255,255,0.1)" }}>
+                      <div style={{ fontSize: 24, marginBottom: 12 }}>🐙</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 6 }}>No GitHub Automation</div>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 280, margin: "0 auto" }}>
+                        Move this task to <strong>In Progress</strong> to automatically create a branch,
+                        or <strong>Done</strong> to open a Pull Request.
+                      </p>
                     </div>
-                    <button type="submit" disabled={ghLinkLoading} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "0 16px", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
-                      {ghLinkLoading ? "…" : "Add"}
-                    </button>
-                  </form>
-
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>Resource Links ({taskModal.task.githubLinks?.length || 0})</label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {(!taskModal.task.githubLinks || taskModal.task.githubLinks.length === 0) ? (
-                      <div style={{ textAlign: "center", padding: "24px 0", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>No links added yet</div>
-                    ) : (
-                      taskModal.task.githubLinks.map(link => (
-                        <div key={link._id} style={{ background: "rgba(10,13,22,0.5)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: link.meta?.title ? 8 : 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <div style={{ width: 24, height: 24, borderRadius: 6, background: link.type === 'pr' ? "rgba(52,211,153,0.15)" : "rgba(129,140,248,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                {link.type === 'pr' ? <IconGitPR/> : <IconGitCommit/>}
-                              </div>
-                              <a href={link.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#818cf8", textDecoration: "none", fontWeight: 600 }}>
-                                {link.type.toUpperCase()} {link.meta?.number ? `#${link.meta.number}` : link.url.split('/').pop().slice(0, 7)}
-                              </a>
-                            </div>
-                            <button onClick={() => removeGithubLink(link._id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.2)", fontSize: 18 }}>×</button>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                      {/* Branch Info */}
+                      <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#818cf8", fontWeight: 700, fontSize: 14 }}>
+                            <IconGitBranch /> Active Branch
                           </div>
-                          {link.meta?.title && (
-                            <div style={{ fontSize: 12, color: "#e2e8f0", lineHeight: 1.4, marginLeft: 32 }}>{link.meta.title}</div>
-                          )}
-                          {link.meta?.state && (
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, marginLeft: 32 }}>
-                              <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: link.meta.state === 'merged' ? "#a78bfa" : link.meta.state === 'open' ? "#34d399" : "#f87171", color: "#fff", textTransform: "uppercase" }}>{link.meta.state}</span>
-                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>by {link.meta.author}</span>
-                            </div>
+                          {taskModal.task.github.branchUrl && (
+                            <a href={taskModal.task.github.branchUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>View on GitHub ↗</a>
                           )}
                         </div>
-                      ))
-                    )}
-                  </div>
+                        <div style={{ background: "rgba(0,0,0,0.2)", padding: "10px 14px", borderRadius: 10, fontFamily: "monospace", fontSize: 13, color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.05)" }}>
+                          {taskModal.task.github.branch || "Not created yet"}
+                        </div>
+                      </div>
+
+                      {/* PR Info */}
+                      {taskModal.task.github.pr && (
+                        <div style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 16, padding: 20 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#34d399", fontWeight: 700, fontSize: 14 }}>
+                              <IconGitPR /> Pull Request #{taskModal.task.github.pr.number}
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: taskModal.task.github.pr.state === "merged" ? "#a78bfa" : "#34d399", color: "#fff", textTransform: "uppercase" }}>
+                              {taskModal.task.github.pr.state}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 4 }}>{taskModal.task.github.pr.title}</div>
+                          <a href={taskModal.task.github.pr.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#34d399", textDecoration: "none", fontWeight: 600 }}>Review Pull Request →</a>
+                        </div>
+                      )}
+
+                      {/* Commits */}
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                          <IconGitCommit /> Recent Commits ({taskModal.task.github.commits?.length || 0})
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {!taskModal.task.github.commits?.length ? (
+                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "10px 0" }}>No commits synced yet.</div>
+                          ) : (
+                            taskModal.task.github.commits.slice(0, 5).map((c, i) => (
+                              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, color: "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.message}</div>
+                                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{c.author} • {new Date(c.timestamp).toLocaleTimeString()}</div>
+                                </div>
+                                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#818cf8", background: "rgba(129,140,248,0.1)", padding: "2px 6px", borderRadius: 4 }}>
+                                  {c.sha.slice(0, 7)}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

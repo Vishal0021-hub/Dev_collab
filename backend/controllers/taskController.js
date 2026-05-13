@@ -1,16 +1,16 @@
-const axios  = require("axios");
-const Task   = require("../models/Task");
-const Board  = require("../models/Board");
-const User   = require("../models/User");
-const Project    = require("../models/Project");
-const Workspace  = require("../models/workspace");
-const Comment    = require("../models/Message");   // re-use Message for task comments if exists
+const axios = require("axios");
+const Task = require("../models/Task");
+const Board = require("../models/Board");
+const User = require("../models/User");
+const Project = require("../models/Project");
+const Workspace = require("../models/workspace");
+const Comment = require("../models/Message");   // re-use Message for task comments if exists
 const { logActivity } = require("../utils/activityLogger");
-const { getIO }       = require("../socket");
-const { decrypt }     = require("../utils/encryption");
+const { getIO } = require("../socket");
+
 
 const emitToWs = (workspaceId, event, payload) => {
-  try { getIO().to(`ws:${workspaceId}`).emit(event, payload); } catch {}
+  try { getIO().to(`ws:${workspaceId}`).emit(event, payload); } catch { }
 };
 
 
@@ -107,14 +107,14 @@ exports.moveTask = async (req, res) => {
     await logActivity(newBoard.project.workspace, req.user._id, "task_moved", {
       taskTitle: task.title,
       fromBoard: oldBoard.name,
-      toBoard:   newBoard.name,
+      toBoard: newBoard.name,
     }, { entityType: "task", entityId: task._id });
 
     emitToWs(newBoard.project.workspace, "task:moved", {
       taskId,
       fromBoardId: oldBoard._id.toString(),
-      toBoardId:   boardId,
-      task:        task.toObject(),
+      toBoardId: boardId,
+      task: task.toObject(),
     });
 
     res.json({ message: "Task moved successfully", task });
@@ -131,7 +131,7 @@ exports.deleteTask = async (req, res) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const workspaceId = task.board.project.workspace;
-    const taskTitle   = task.title;
+    const taskTitle = task.title;
 
     await Task.findByIdAndDelete(taskId);
 
@@ -324,7 +324,7 @@ exports.removeDependency = async (req, res) => {
     const { workspaceId } = await getWorkspaceForTask(task) || {};
     if (workspaceId) {
       await logActivity(workspaceId, req.user._id, "dependency_removed", {}, { entityType: "task", entityId: task._id });
-      
+
       const populatedTask = await Task.findById(taskId).populate("blockedBy");
       const activeBlockers = populatedTask.blockedBy.filter(t => t.status !== "done");
       if (activeBlockers.length === 0) {
@@ -344,7 +344,7 @@ exports.getDependencies = async (req, res) => {
     const task = await Task.findById(taskId)
       .populate("blockedBy", "title status assignedTo")
       .populate("blocking", "title status assignedTo");
-      
+
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const populatedBlockedBy = await User.populate(task.blockedBy, { path: "assignedTo", select: "name" });
