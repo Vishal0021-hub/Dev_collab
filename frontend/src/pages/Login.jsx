@@ -1,6 +1,6 @@
 import { useState } from "react";
 import API from "../services/api";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import '../utils/login.css'
 const floatingParticles = Array.from({ length: 18 }, (_, i) => ({
   id: i,
@@ -14,6 +14,7 @@ const floatingParticles = Array.from({ length: 18 }, (_, i) => ({
 import { toast } from "react-hot-toast";
 
 function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [searchParams] = useSearchParams();
@@ -33,7 +34,7 @@ function Login() {
       toast.success("Welcome back!", { id: loadingToast });
       
       setTimeout(() => {
-        window.location.href = redirect;
+        navigate(redirect);
       }, 800);
 
     } catch (err) {

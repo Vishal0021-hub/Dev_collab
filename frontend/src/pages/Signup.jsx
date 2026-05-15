@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import API from "../services/api"
 import "../utils/signup.css"
 const floatingParticles = Array.from({ length: 14 }, (_, i) => ({
@@ -14,6 +14,7 @@ const floatingParticles = Array.from({ length: 14 }, (_, i) => ({
 import { toast } from "react-hot-toast";
 
 function Signup() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -55,7 +56,7 @@ function Signup() {
       toast.success("Account created! Redirecting to login…", { id: loadingToast });
 
       setTimeout(() => {
-        window.location.href = "/login";
+        navigate("/login");
       }, 1500);
 
     } catch (err) {
