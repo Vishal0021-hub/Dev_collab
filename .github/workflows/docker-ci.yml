@@ -29,7 +29,10 @@ jobs:
 
       - name: Build Frontend Image
         run: |
-          docker build -t vishal0021/devspace-frontend ./frontend
+          docker build \
+            --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} \
+            --build-arg VITE_SOCKET_URL=${{ secrets.VITE_SOCKET_URL }} \
+            -t vishal0021/devspace-frontend ./frontend
 
       - name: Push Frontend Image
         run: |
