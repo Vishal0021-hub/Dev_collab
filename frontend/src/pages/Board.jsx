@@ -79,7 +79,7 @@ const Board = () => {
 
   // Task modal
   const [taskModal, setTaskModal] = useState(null);
-  const [modalTab, setModalTab] = useState("details"); // "details" | "attachments" | "code"
+  const [modalTab, setModalTab] = useState("details"); // "details" | "attachments" | "github"
   const [taskForm, setTaskForm] = useState({
     title: "", description: "", priority: "medium", dueDate: "", assignedTo: "", status: "todo"
   });
@@ -721,7 +721,6 @@ const Board = () => {
                     { key: "details", label: "📋 Details" },
                     { key: "attachments", label: "📎 Attachments" },
                     { key: "github", label: "🐙 GitHub" },
-                    { key: "code", label: "</> Code" },
                   ].map(tab => (
                     <button key={tab.key} type="button" onClick={() => setModalTab(tab.key)}
                       style={{
@@ -824,10 +823,7 @@ const Board = () => {
                 <AttachmentPanel taskId={taskModal.task._id} isAdmin={isAdmin} />
               )}
 
-              {/* ── Code Tab ── */}
-              {modalTab === "code" && taskModal.mode === "edit" && (
-                <MonacoEditorPanel taskId={taskModal.task._id} taskTitle={taskModal.task?.title} />
-              )}
+
 
               {/* ── GitHub Tab ── */}
               {modalTab === "github" && taskModal.mode === "edit" && (
