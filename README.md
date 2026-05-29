@@ -304,26 +304,7 @@ devspace/
 
 ---
 
-## Environment Variables
 
-```env
-PORT=5000
-NODE_ENV=development
-CLIENT_URL=http://localhost:5173
-
-MONGO_URI=your_mongodb_connection_string
-
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-INVITE_SECRET=your_invite_secret
-
-EMAIL_USER=yourname@gmail.com
-EMAIL_PASS=your_gmail_app_password
-
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-```
 
 ---
 
