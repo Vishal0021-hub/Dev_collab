@@ -164,10 +164,10 @@ function Login() {
             <div className="dc-field">
               <label className="dc-label">Email address</label>
               <div className="dc-input-wrap">
-                <svg className="dc-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {/* <svg className="dc-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"> */}
                   <rect x="2" y="4" width="20" height="16" rx="2" />
                   <path d="M2 8l10 6 10-6" />
-                </svg>
+                {/* </svg> */}
                 <input
                   type="email"
                   placeholder="you@company.dev"
@@ -181,10 +181,10 @@ function Login() {
             <div className="dc-field">
               <label className="dc-label">Password</label>
               <div className="dc-input-wrap">
-                <svg className="dc-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {/* <svg className="dc-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"> */}
                   <rect x="3" y="11" width="18" height="11" rx="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
+                {/* </svg> */}
                 <input
                   type="password"
                   placeholder="••••••••••"

@@ -16,7 +16,8 @@ import { toast } from "react-hot-toast";
 function Signup() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirm: "",
@@ -28,8 +29,8 @@ function Signup() {
 
   const handleSignup = async () => {
     try {
-      if (!form.name.trim()) {
-        return toast.error("Please enter your name");
+      if (!form.firstName.trim()) {
+        return toast.error("Please enter your first name");
       }
 
       // Gmail-only restriction (front-end fast-fail)
@@ -46,9 +47,11 @@ function Signup() {
         return toast.error("Password must include 1 uppercase, 1 number, min 8 chars");
       }
 
+      const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
+
       const loadingToast = toast.loading("Creating account...");
       await API.post("/auth/register", {
-        name: form.name,
+        name: fullName,
         email: form.email,
         password: form.password,
       });
@@ -101,7 +104,7 @@ function Signup() {
                       <svg className="su-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                       </svg>
-                      <input type="text" placeholder="Alex" className="su-input" onChange={set("name")} />
+                      <input type="text" placeholder="Alex" className="su-input" onChange={set("firstName")} />
                     </div>
                   </div>
                   <div className="su-field">
@@ -110,7 +113,7 @@ function Signup() {
                       <svg className="su-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                       </svg>
-                      <input type="text" placeholder="Rivera" className="su-input" />
+                      <input type="text" placeholder="Rivera" className="su-input" onChange={set("lastName")} />
                     </div>
                   </div>
                 </div>
