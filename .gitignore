@@ -1,0 +1,9 @@
+# Ignore local Docker overrides
+docker-compose.override.yml
+
+# Ignore local environment files at root if any
+.env
+.env.local
+.env.development
+.env.production
+.env.test
