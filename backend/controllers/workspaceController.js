@@ -268,3 +268,94 @@ exports.getDashboard = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.updateWorkspace = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Workspace name is required" });
+    }
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const member = workspace.members.find(
+      (m) => m.userId && m.userId.toString() === req.user._id.toString()
+    );
+    if (!member || !["owner", "admin"].includes(member.role)) {
+      return res.status(403).json({ message: "Only workspace owners or admins can rename the workspace" });
+    }
+
+    workspace.name = name.trim();
+    await workspace.save();
+
+    await logActivity(workspaceId, req.user._id, "workspace_updated", {
+      name: workspace.name,
+    });
+
+    res.json(workspace);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.deleteWorkspace = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const member = workspace.members.find(
+      (m) => m.userId && m.userId.toString() === req.user._id.toString()
+    );
+    if (!member || member.role !== "owner") {
+      return res.status(403).json({ message: "Only workspace owner can delete the workspace" });
+    }
+
+    const Project = require("../models/Project");
+    const Channel = require("../models/Channel");
+    const Board = require("../models/Board");
+    const Task = require("../models/Task");
+    const Activity = require("../models/Activity");
+    const DirectMessage = require("../models/DirectMessage");
+    const Message = require("../models/Message");
+
+    const projects = await Project.find({ workspace: workspaceId });
+    const projectIds = projects.map((p) => p._id);
+
+    const boards = await Board.find({ project: { $in: projectIds } });
+    const boardIds = boards.map((b) => b._id);
+
+    const channels = await Channel.find({ workspace: workspaceId });
+    const channelIds = channels.map((c) => c._id);
+
+    if (boardIds.length > 0) {
+      await Task.deleteMany({ board: { $in: boardIds } });
+      await Board.deleteMany({ _id: { $in: boardIds } });
+    }
+    if (projectIds.length > 0) {
+      await Project.deleteMany({ _id: { $in: projectIds } });
+    }
+    if (channelIds.length > 0) {
+      if (Message) await Message.deleteMany({ channel: { $in: channelIds } });
+      await Channel.deleteMany({ _id: { $in: channelIds } });
+    }
+    if (DirectMessage) {
+      await DirectMessage.deleteMany({ workspace: workspaceId });
+    }
+    await Activity.deleteMany({ workspace: workspaceId });
+    await Workspace.findByIdAndDelete(workspaceId);
+
+    res.json({ message: "Workspace deleted successfully", workspaceId });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

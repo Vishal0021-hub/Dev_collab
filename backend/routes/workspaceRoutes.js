@@ -4,6 +4,8 @@ const router = express.Router();
 const {
   createWorkspace,
   getWorkspaces,
+  updateWorkspace,
+  deleteWorkspace,
   inviteToWorkspace,
   joinWorkspace,
   getWorkspaceMembers,
@@ -17,8 +19,15 @@ const { inviteLimiter } = require("../middleware/securityMiddleware");
 router.post("/", protect, createWorkspace);
 router.get("/", protect, getWorkspaces);
 
+// update workspace name - Owner or Admin
+router.put("/:workspaceId", protect, isAdmin, updateWorkspace);
+
+// delete workspace - Owner only
+router.delete("/:workspaceId", protect, isOwner, deleteWorkspace);
+
 // get members - Any member can view
 router.get("/:workspaceId/members", protect, authorize(["owner", "admin", "member"]), getWorkspaceMembers);
+
 
 // invite - Only Owner and Admin, rate limited (10 req / 15 min)
 router.post("/:workspaceId/invite", protect, isAdmin, inviteLimiter, inviteToWorkspace);
