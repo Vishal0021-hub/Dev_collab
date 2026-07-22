@@ -19,6 +19,13 @@ const IconChevron = ({ open }) => <svg width="12" height="12" viewBox="0 0 24 24
 const IconLogout = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>;
 const IconBriefcase = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>;
 const IconLock = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
+const IconDots = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <circle cx="12" cy="5" r="1.5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="12" cy="19" r="1.5" />
+  </svg>
+);
 
 const ROLE_COLORS = {
   owner: { bg: "rgba(251,191,36,0.15)", color: "#fbbf24" },
@@ -48,6 +55,14 @@ export default function AppShell({ children }) {
   const [creatingChannel, setCreatingChannel] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  const [activeMenuWsId, setActiveMenuWsId] = useState(null);
+  const [renamingWs, setRenamingWs] = useState(null);
+  const [renameInput, setRenameInput] = useState("");
+  const [renamingLoading, setRenamingLoading] = useState(false);
+
+  const [deletingWs, setDeletingWs] = useState(null);
+  const [deletingLoading, setDeletingLoading] = useState(false);
+
   const toggle = (key) => setSectionsOpen(p => ({ ...p, [key]: !p[key] }));
 
   const handleLogout = () => {
@@ -73,6 +88,53 @@ export default function AppShell({ children }) {
       toast.error(err.response?.data?.message || "Failed to create channel");
     } finally {
       setCreatingChannel(false);
+    }
+  };
+
+  const handleRenameWorkspace = async (e) => {
+    e.preventDefault();
+    if (!renamingWs || !renameInput.trim()) return;
+    setRenamingLoading(true);
+    const loadingToast = toast.loading("Updating workspace name...");
+    try {
+      const res = await API.put(`/workspaces/${renamingWs._id}`, { name: renameInput.trim() });
+      toast.success("Workspace renamed successfully!", { id: loadingToast });
+      setRenamingWs(null);
+      refreshWorkspaces();
+      if (activeWorkspace?._id === renamingWs._id) {
+        setActiveWorkspace(res.data);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to rename workspace", { id: loadingToast });
+    } finally {
+      setRenamingLoading(false);
+    }
+  };
+
+  const handleDeleteWorkspace = async () => {
+    if (!deletingWs) return;
+    setDeletingLoading(true);
+    const loadingToast = toast.loading("Deleting workspace...");
+    try {
+      await API.delete(`/workspaces/${deletingWs._id}`);
+      toast.success("Workspace deleted successfully!", { id: loadingToast });
+      const deletedId = deletingWs._id;
+      setDeletingWs(null);
+      refreshWorkspaces();
+      if (activeWorkspace?._id === deletedId) {
+        const remaining = workspaces.filter(w => w._id !== deletedId);
+        if (remaining.length > 0) {
+          setActiveWorkspace(remaining[0]);
+          navigate(`/projects/${remaining[0]._id}`);
+        } else {
+          setActiveWorkspace(null);
+          navigate("/dashboard");
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete workspace", { id: loadingToast });
+    } finally {
+      setDeletingLoading(false);
     }
   };
 
@@ -125,23 +187,155 @@ export default function AppShell({ children }) {
             <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, paddingLeft: 4 }}>Workspace</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {workspaces.map(ws => (
-                <button
-                  key={ws._id}
-                  onClick={() => { setActiveWorkspace(ws); navigate(`/projects/${ws._id}`); }}
-                  style={{
-                    width: "100%", textAlign: "left", background: activeWorkspace?._id === ws._id ? "rgba(99,102,241,0.15)" : "none",
-                    border: activeWorkspace?._id === ws._id ? "1px solid rgba(99,102,241,0.3)" : "1px solid transparent",
-                    borderRadius: 10, padding: "8px 10px", cursor: "pointer",
-                    color: activeWorkspace?._id === ws._id ? "#818cf8" : "rgba(255,255,255,0.7)",
-                    fontSize: 13, fontWeight: activeWorkspace?._id === ws._id ? 600 : 400,
-                    display: "flex", alignItems: "center", gap: 8, transition: "all 0.15s"
-                  }}
-                >
-                  <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#6366f1,#a78bfa)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 700, flexShrink: 0 }}>
-                    {ws.name[0].toUpperCase()}
+                <div key={ws._id} style={{ position: "relative" }}>
+                  <div
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      background: activeWorkspace?._id === ws._id ? "rgba(99,102,241,0.15)" : "none",
+                      border: activeWorkspace?._id === ws._id ? "1px solid rgba(99,102,241,0.3)" : "1px solid transparent",
+                      borderRadius: 10,
+                      padding: "4px 6px 4px 10px",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <button
+                      onClick={() => { setActiveWorkspace(ws); navigate(`/projects/${ws._id}`); }}
+                      style={{
+                        flex: 1,
+                        textAlign: "left",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: activeWorkspace?._id === ws._id ? "#818cf8" : "rgba(255,255,255,0.7)",
+                        fontSize: 13,
+                        fontWeight: activeWorkspace?._id === ws._id ? 600 : 400,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        overflow: "hidden",
+                        padding: 0,
+                      }}
+                    >
+                      <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#6366f1,#a78bfa)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 700, flexShrink: 0 }}>
+                        {ws.name ? ws.name[0].toUpperCase() : "W"}
+                      </div>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ws.name}</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuWsId(activeMenuWsId === ws._id ? null : ws._id);
+                      }}
+                      style={{
+                        background: activeMenuWsId === ws._id ? "rgba(255,255,255,0.15)" : "none",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "5px 6px",
+                        cursor: "pointer",
+                        color: "rgba(255,255,255,0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 0.15s",
+                        marginLeft: 4,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+                      onMouseLeave={e => { if (activeMenuWsId !== ws._id) e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
+                      title="Workspace options"
+                    >
+                      <IconDots />
+                    </button>
                   </div>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ws.name}</span>
-                </button>
+
+                  {activeMenuWsId === ws._id && (
+                    <>
+                      <div
+                        style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                        onClick={() => setActiveMenuWsId(null)}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          right: 0,
+                          marginTop: 4,
+                          background: "#0f1322",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          borderRadius: 12,
+                          padding: "6px",
+                          width: 160,
+                          boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                          zIndex: 100,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 2,
+                        }}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuWsId(null);
+                            setRenamingWs(ws);
+                            setRenameInput(ws.name);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            width: "100%",
+                            padding: "8px 10px",
+                            background: "none",
+                            border: "none",
+                            borderRadius: 8,
+                            color: "rgba(255,255,255,0.85)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(99,102,241,0.15)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "none"}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                          Rename
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuWsId(null);
+                            setDeletingWs(ws);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            width: "100%",
+                            padding: "8px 10px",
+                            background: "none",
+                            border: "none",
+                            borderRadius: 8,
+                            color: "#f87171",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.15)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "none"}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               ))}
               <button
                 onClick={() => navigate("/dashboard")}
@@ -154,6 +348,7 @@ export default function AppShell({ children }) {
             </div>
           </div>
         )}
+
 
         {/* Scrollable nav */}
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -317,6 +512,55 @@ export default function AppShell({ children }) {
       <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
         {children}
       </div>
+
+      {/* ── Rename Workspace Modal ── */}
+      {renamingWs && (
+        <div onClick={() => setRenamingWs(null)} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "#0a0c14", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 24, padding: "32px", boxShadow: "0 30px 80px rgba(0,0,0,0.8)" }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Rename Workspace</h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 20 }}>Enter a new name for this workspace.</p>
+            <form onSubmit={handleRenameWorkspace}>
+              <input
+                autoFocus
+                type="text"
+                value={renameInput}
+                onChange={e => setRenameInput(e.target.value)}
+                placeholder="Workspace name"
+                required
+                style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#fff", fontSize: 14, outline: "none", marginBottom: 24 }}
+              />
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setRenamingWs(null)} style={{ padding: "10px 16px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button type="submit" disabled={renamingLoading} style={{ padding: "10px 18px", borderRadius: 10, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                  {renamingLoading ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Workspace Confirmation Modal ── */}
+      {deletingWs && (
+        <div onClick={() => setDeletingWs(null)} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "#0a0c14", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 24, padding: "32px", boxShadow: "0 30px 80px rgba(0,0,0,0.8)" }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, color: "#f87171" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+            </div>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Delete Workspace?</h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 24, lineHeight: 1.5 }}>
+              Are you sure you want to delete <strong style={{ color: "#fff" }}>"{deletingWs.name}"</strong>? All associated projects, boards, channels, and tasks will be permanently removed. This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setDeletingWs(null)} style={{ padding: "10px 16px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+              <button type="button" onClick={handleDeleteWorkspace} disabled={deletingLoading} style={{ padding: "10px 18px", borderRadius: 10, background: "linear-gradient(135deg,#ef4444,#dc2626)", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {deletingLoading ? "Deleting…" : "Delete Workspace"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
