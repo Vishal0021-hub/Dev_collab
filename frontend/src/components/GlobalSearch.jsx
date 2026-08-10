@@ -229,7 +229,7 @@ export default function GlobalSearch({ onClose }) {
                 const idx = (results?.tasks?.length || 0) + (results?.messages?.length || 0) + i;
                 return (
                   <ResultRow key={m._id} focused={focused === idx} onClick={() => goToMember(m)}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#312E81", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#C7D2FE", flexShrink: 0 }}>
                       {m.name?.[0]?.toUpperCase() || "?"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>

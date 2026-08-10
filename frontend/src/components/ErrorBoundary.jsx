@@ -30,7 +30,7 @@ export default class ErrorBoundary extends Component {
     return (
       <div style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg,#07090f 0%,#0d1020 100%)",
+        background: "#0F172A",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontFamily: "Figtree, Inter, sans-serif", padding: 24,
       }}>
@@ -71,7 +71,7 @@ export default class ErrorBoundary extends Component {
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={this.handleReset}
               style={{
-                background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                background: "#4F46E5",
                 border: "none", borderRadius: 10, padding: "10px 22px",
                 color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
               }}

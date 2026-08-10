@@ -18,7 +18,7 @@ const MemberAvatar = ({ name, index, size = 40, fontSize = 15 }) => {
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%", flexShrink: 0,
-      background: `linear-gradient(135deg, ${a}, ${b})`,
+      background: a,
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize, fontWeight: 700, color: "#fff",
       boxShadow: `0 0 0 2px rgba(0,0,0,0.4)`,
@@ -187,7 +187,7 @@ const MembersSidebar = ({ workspaceId, members, userRole, onUpdate, onClose, onI
             onClick={onInviteOpen}
             style={{
               width: "100%", padding: "13px 20px",
-              background: "linear-gradient(135deg, var(--indigo), var(--violet))",
+              background: "#4F46E5",
               border: "none", borderRadius: 14,
               color: "#fff", fontFamily: "var(--font-display)",
               fontSize: 14, fontWeight: 700, cursor: "pointer",

@@ -101,7 +101,7 @@ export default function NotificationBell() {
         {unreadCount > 0 && (
           <span style={{
             position: "absolute", top: -4, right: -4,
-            background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+            background: "#4F46E5",
             color: "#fff", borderRadius: "50%",
             width: unreadCount > 9 ? 20 : 16, height: 16,
             fontSize: 10, fontWeight: 700,

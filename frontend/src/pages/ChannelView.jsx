@@ -188,7 +188,7 @@ export default function ChannelView() {
                   >
                     <div style={{ width: 36, height: 36, flexShrink: 0 }}>
                       {showAvatar && (
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: isMe ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "linear-gradient(135deg,#0ea5e9,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: isMe ? "#312E81" : "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: isMe ? "#C7D2FE" : "#BAE6FD" }}>
                           {(msg.sender?.name || "U")[0].toUpperCase()}
                         </div>
                       )}
@@ -237,7 +237,7 @@ export default function ChannelView() {
             <button
               type="submit"
               disabled={!content.trim() || sending}
-              style={{ background: content.trim() ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "rgba(255,255,255,0.08)", border: "none", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: content.trim() ? "pointer" : "not-allowed", color: "#fff", transition: "all 0.2s", flexShrink: 0 }}
+              style={{ background: content.trim() ? "#4F46E5" : "rgba(255,255,255,0.08)", border: "none", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: content.trim() ? "pointer" : "not-allowed", color: "#fff", transition: "all 0.2s", flexShrink: 0 }}
             >
               <IconSend/>
             </button>

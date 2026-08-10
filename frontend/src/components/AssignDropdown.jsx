@@ -10,7 +10,7 @@ const MiniAvatar = ({ name, index, size = 24 }) => {
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
-      background: `linear-gradient(135deg, ${a}, ${b})`,
+      background: a,
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.45, fontWeight: 700, color: "#fff",
       flexShrink: 0

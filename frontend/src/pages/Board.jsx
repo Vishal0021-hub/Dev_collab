@@ -422,7 +422,7 @@ const Board = () => {
             </button>
 
             {isAdmin && (
-              <button onClick={() => setIsColModal(true)} style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={() => setIsColModal(true)} style={{ background: "#4F46E5", border: "none", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconPlus size={13} /> Add Column
               </button>
             )}
@@ -444,7 +444,7 @@ const Board = () => {
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 8 }}>No columns yet</div>
                 <p style={{ fontSize: 14, marginBottom: 24 }}>Create your first column to start organizing tasks.</p>
                 {isAdmin && (
-                  <button onClick={() => setIsColModal(true)} style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 12, padding: "10px 24px", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                  <button onClick={() => setIsColModal(true)} style={{ background: "#4F46E5", border: "none", borderRadius: 12, padding: "10px 24px", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
                     Add First Column
                   </button>
                 )}
@@ -595,7 +595,7 @@ const Board = () => {
                                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
                                         {task.assignedTo?.name ? (
                                           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                            <div style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#a78bfa)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff" }}>
+                                            <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#312E81", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#C7D2FE" }}>
                                               {task.assignedTo.name[0].toUpperCase()}
                                             </div>
                                             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{task.assignedTo.name}</span>
@@ -695,7 +695,7 @@ const Board = () => {
                 />
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                   <button type="button" onClick={() => setIsColModal(false)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "8px 16px", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Cancel</button>
-                  <button type="submit" disabled={colLoading} style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "8px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                  <button type="submit" disabled={colLoading} style={{ background: "#4F46E5", border: "none", borderRadius: 10, padding: "8px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
                     {colLoading ? "Adding…" : "Add Column"}
                   </button>
                 </div>
@@ -811,7 +811,7 @@ const Board = () => {
 
                   <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
                     <button type="button" onClick={() => setTaskModal(null)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Cancel</button>
-                    <button type="submit" style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                    <button type="submit" style={{ background: "#4F46E5", border: "none", borderRadius: 10, padding: "9px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
                       {taskModal.mode === "add" ? "Create Task" : "Save Changes"}
                     </button>
                   </div>
