@@ -112,26 +112,26 @@ export default function Settings() {
 
   return (
     <AppShell>
-      <div style={{ padding: "40px 60px", maxWidth: 900, margin: "0 auto", color: "#fff" }}>
-        <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8, fontFamily: "Figtree" }}>Settings</h1>
-        <p style={{ color: "rgba(255,255,255,0.4)", marginBottom: 40 }}>Manage your account connections and workspace integrations.</p>
+      <div style={{ padding: "40px 60px", maxWidth: 900, margin: "0 auto", color: "#F1F5F9" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, fontFamily: "Inter, sans-serif", letterSpacing: "-0.01em" }}>Settings</h1>
+        <p style={{ color: "#64748B", marginBottom: 40, fontSize: 14 }}>Manage your account connections and workspace integrations.</p>
 
         {/* ── User GitHub Connection ── */}
-        <section style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: 32, marginBottom: 32 }}>
+        <section style={{ background: "#1E293B", border: "1px solid rgba(51,65,85,0.5)", borderRadius: 16, padding: 32, marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(51,65,85,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <IconGithub />
             </div>
             <div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>GitHub Connection</h2>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: 0 }}>Sync your projects with GitHub repositories.</p>
+              <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0, color: "#F1F5F9" }}>GitHub Connection</h2>
+              <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>Sync your projects with GitHub repositories.</p>
             </div>
           </div>
 
           {loading ? (
-            <div style={{ height: 60, background: "rgba(255,255,255,0.05)", borderRadius: 12, animation: "pulse 1.5s infinite" }} />
+            <div style={{ height: 60, background: "#253448", borderRadius: 12, animation: "pulse 1.5s infinite" }} />
           ) : ghProfile?.connected ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(52,211,153,0.05)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 16, padding: "16px 24px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 12, padding: "16px 24px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                 <img src={ghProfile.avatarUrl} alt="Avatar" style={{ width: 40, height: 40, borderRadius: "50%", border: "2px solid rgba(52,211,153,0.3)" }} />
                 <div>
@@ -147,7 +147,7 @@ export default function Settings() {
             </div>
           ) : (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 20 }}>Connect your GitHub account to enable branch automation and PR tracking.</p>
+              <p style={{ fontSize: 14, color: "#94A3B8", marginBottom: 20 }}>Connect your GitHub account to enable branch automation and PR tracking.</p>
               <button onClick={connectGitHub} style={{ background: "#fff", color: "#000", border: "none", borderRadius: 12, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, margin: "0 auto" }}>
                 <IconGithub /> Connect GitHub
               </button>
@@ -156,23 +156,23 @@ export default function Settings() {
         </section>
 
         {/* ── Workspace Repo Link ── */}
-        <section style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: 32 }}>
+        <section style={{ background: "#1E293B", border: "1px solid rgba(51,65,85,0.5)", borderRadius: 16, padding: 32 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(99,102,241,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#818cf8" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             </div>
             <div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Workspace Repository</h2>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: 0 }}>Link a GitHub repo to <strong style={{ color: "rgba(255,255,255,0.7)" }}>{activeWorkspace?.name || "Active Workspace"}</strong>.</p>
+              <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0, color: "#F1F5F9" }}>Workspace Repository</h2>
+              <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>Link a GitHub repo to <strong style={{ color: "#CBD5E1" }}>{activeWorkspace?.name || "Active Workspace"}</strong>.</p>
             </div>
           </div>
 
           {!activeWorkspace ? (
-            <div style={{ padding: 20, textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 14 }}>
+            <div style={{ padding: 20, textAlign: "center", color: "#64748B", fontSize: 14 }}>
               Select a workspace from the sidebar to manage its integrations.
             </div>
           ) : activeWorkspace.github?.repoFullName ? (
-            <div style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: "20px 24px" }}>
+            <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 12, padding: "20px 24px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <IconGithub />
@@ -195,7 +195,7 @@ export default function Settings() {
               </div>
             </div>
           ) : !ghProfile?.connected ? (
-            <div style={{ textAlign: "center", padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 14 }}>
+            <div style={{ textAlign: "center", padding: 20, color: "#64748B", fontSize: 14 }}>
               Connect your GitHub account above to link a repository.
             </div>
           ) : (
@@ -205,14 +205,16 @@ export default function Settings() {
                   placeholder="Search your repositories..." 
                   value={search} 
                   onChange={e => setSearch(e.target.value)}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 16px", color: "#fff", fontSize: 14, outline: "none" }}
+                  style={{ width: "100%", background: "#0F172A", border: "1px solid #334155", borderRadius: 10, padding: "12px 16px", color: "#F1F5F9", fontSize: 14, outline: "none",
+                    fontFamily: "inherit"
+                  }}
                 />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto", paddingRight: 4 }}>
                 {filteredRepos.length === 0 ? (
                   <div style={{ padding: 20, textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 13 }}>No repositories found</div>
                 ) : filteredRepos.map(repo => (
-                  <div key={repo.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, transition: "all 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"} onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}>
+                  <div key={repo.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#253448", border: "1px solid rgba(51,65,85,0.4)", borderRadius: 10, transition: "all 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "#2d3f56"} onMouseLeave={e => e.currentTarget.style.background = "#253448"}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{repo.fullName}</div>
                       {repo.private && <span style={{ fontSize: 10, color: "#fbbf24", background: "rgba(251,191,36,0.1)", padding: "1px 6px", borderRadius: 4, marginTop: 4, display: "inline-block" }}>Private</span>}

@@ -13,6 +13,14 @@ const emitToWs = (workspaceId, event, payload) => {
   try { getIO().to(`ws:${workspaceId}`).emit(event, payload); } catch { }
 };
 
+const getWorkspaceForTask = async (task) => {
+  const populatedTask = await Task.findById(task._id).populate({
+    path: "board",
+    populate: { path: "project" }
+  });
+  return { workspaceId: populatedTask?.board?.project?.workspace };
+};
+
 
 
 /* ═══════════════════════════════════════════════════════════════

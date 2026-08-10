@@ -206,7 +206,7 @@ export default function Analytics() {
                   }}>
                     <div style={{
                       width: 28, height: 28, borderRadius: "50%",
-                      background: `linear-gradient(135deg,${CHART_COLORS[i % CHART_COLORS.length]},#1e1b4b)`,
+                      background: CHART_COLORS[i % CHART_COLORS.length],
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0,
                     }}>

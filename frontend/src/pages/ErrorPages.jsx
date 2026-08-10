@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 const PageWrapper = ({ children }) => (
   <div style={{
     minHeight: "100vh",
-    background: "linear-gradient(135deg, #07090f 0%, #0d1020 60%, #0a0c1a 100%)",
+    background: "#0F172A",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontFamily: "Figtree, Inter, sans-serif", padding: 24,
     position: "relative", overflow: "hidden",
@@ -18,7 +18,7 @@ const PageWrapper = ({ children }) => (
 
 const ActionButton = ({ onClick, primary, children }) => (
   <button onClick={onClick} style={{
-    background: primary ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "rgba(255,255,255,0.05)",
+    background: primary ? "#4F46E5" : "rgba(255,255,255,0.05)",
     border: primary ? "none" : "1px solid rgba(255,255,255,0.1)",
     borderRadius: 10, padding: "10px 22px",
     color: primary ? "#fff" : "rgba(255,255,255,0.6)",
@@ -43,9 +43,8 @@ export function NotFound() {
         {/* Big number */}
         <div style={{
           fontSize: 120, fontWeight: 900, lineHeight: 1,
-          background: "linear-gradient(135deg,#6366f1,#8b5cf6,#a78bfa)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          backgroundClip: "text", marginBottom: 12,
+          color: "#6366F1",
+          marginBottom: 12,
           letterSpacing: "-0.04em",
         }}>
           404
@@ -100,9 +99,8 @@ export function Forbidden() {
 
         <div style={{
           fontSize: 72, fontWeight: 900, lineHeight: 1,
-          background: "linear-gradient(135deg,#ef4444,#f87171)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          backgroundClip: "text", marginBottom: 12,
+          color: "#EF4444",
+          marginBottom: 12,
           letterSpacing: "-0.04em",
         }}>
           403
@@ -154,7 +152,7 @@ export function OfflineBanner() {
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
-      background: "linear-gradient(90deg,#b45309,#d97706)",
+      background: "#B45309",
       color: "#fff", fontSize: 13, fontWeight: 600,
       padding: "9px 20px",
       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
