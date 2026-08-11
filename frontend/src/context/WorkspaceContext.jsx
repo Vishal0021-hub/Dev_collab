@@ -77,7 +77,16 @@ export function WorkspaceProvider({ children }) {
     dispatch({ type: "SET_LOADING_WORKSPACE", payload: true });
     try {
       const res = await API.get("/workspaces");
-      dispatch({ type: "SET_WORKSPACES", payload: res.data });
+      const list = res.data;
+      dispatch({ type: "SET_WORKSPACES", payload: list });
+
+      // Auto-select: restore last used workspace, or fall back to the first one
+      const currentActive = state.activeWorkspace;
+      if (!currentActive && list.length > 0) {
+        const lastId = localStorage.getItem("devspace_last_workspace");
+        const target = (lastId && list.find(w => w._id === lastId)) || list[0];
+        dispatch({ type: "SET_ACTIVE_WORKSPACE", payload: target });
+      }
     } catch (err) {
       console.error("WorkspaceContext: fetchWorkspaces error", err);
     } finally {
@@ -86,6 +95,9 @@ export function WorkspaceProvider({ children }) {
   };
 
   const setActiveWorkspace = (workspace) => {
+    if (workspace?._id) {
+      localStorage.setItem("devspace_last_workspace", workspace._id);
+    }
     dispatch({ type: "SET_ACTIVE_WORKSPACE", payload: workspace });
   };
 

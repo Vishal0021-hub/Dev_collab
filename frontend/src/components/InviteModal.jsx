@@ -51,7 +51,7 @@ const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
         position: "fixed",
         inset: 0,
         zIndex: 300,
-        background: "rgba(0,0,0,0.7)",
+        background: "rgba(15, 23, 42, 0.8)",
         backdropFilter: "blur(12px)",
         display: "flex",
         alignItems: "center",
@@ -78,7 +78,7 @@ const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
             width: 56,
             height: 56,
             borderRadius: 18,
-            background: "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25))",
+            background: "rgba(99,102,241,0.15)",
             border: "1px solid rgba(99,102,241,0.4)",
             display: "flex",
             alignItems: "center",
@@ -135,10 +135,11 @@ const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
               width: "100%",
               padding: "14px 16px",
               borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.03)",
-              color: "#fff",
+              border: "1px solid #334155",
+              background: "#0F172A",
+              color: "#F1F5F9",
               fontSize: 14,
+              outline: "none",
               marginBottom: 24,
             }}
           />
@@ -270,7 +271,7 @@ const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
                 flex: 2,
                 padding: "12px 20px",
                 borderRadius: 12,
-                background: loading ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                background: loading ? "rgba(99,102,241,0.3)" : "#4F46E5",
                 border: "none",
                 color: "#fff",
                 fontSize: 14,
@@ -330,7 +331,7 @@ const InviteModal = ({ workspaceId, onClose, onInviteSent }) => {
                 <button onClick={copyLink} style={{ flexShrink: 0, background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 8, padding: "8px 12px", color: "#818cf8", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Copy</button>
               </div>
               {emailSent && (
-                <button onClick={onClose} style={{ width: "100%", marginTop: 12, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Done</button>
+                <button onClick={onClose} style={{ width: "100%", marginTop: 12, background: "#4F46E5", border: "none", borderRadius: 10, padding: "10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Done</button>
               )}
             </div>
           )}

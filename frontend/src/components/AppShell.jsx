@@ -601,7 +601,7 @@ export default function AppShell({ children }) {
           onClick={() => setRenamingWs(null)}
           style={{
             position: "fixed", inset: 0, zIndex: 300,
-            background: "rgba(0,0,0,0.65)", backdropFilter: "blur(12px)",
+            background: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(12px)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
           }}
         >
@@ -656,7 +656,7 @@ export default function AppShell({ children }) {
           onClick={() => setDeletingWs(null)}
           style={{
             position: "fixed", inset: 0, zIndex: 300,
-            background: "rgba(0,0,0,0.65)", backdropFilter: "blur(12px)",
+            background: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(12px)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
           }}
         >

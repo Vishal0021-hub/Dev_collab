@@ -55,7 +55,7 @@ const Board = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { setActiveWorkspace, workspaces } = useWorkspace();
+  const { setActiveWorkspace, workspaces, activeWorkspace } = useWorkspace();
 
   // workspaceId can come from navigation state (from Projects page) or from project fetch
   const [workspaceId, setWorkspaceId] = useState(location.state?.workspaceId || null);
@@ -83,6 +83,39 @@ const Board = () => {
   const [taskForm, setTaskForm] = useState({
     title: "", description: "", priority: "medium", dueDate: "", assignedTo: "", status: "todo"
   });
+
+  const [ghUrl, setGhUrl] = useState("");
+  const [ghLoading, setGhLoading] = useState(false);
+  const [ghError, setGhError] = useState("");
+
+  const handleAddPR = async (e) => {
+    e.preventDefault();
+    if (!ghUrl.trim()) return;
+    setGhLoading(true);
+    setGhError("");
+    try {
+      const res = await API.post(`/tasks/${taskModal.task._id}/github-links`, { url: ghUrl });
+      setTaskModal({ ...taskModal, task: res.data });
+      setGhUrl("");
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setGhError("PR not found or repository is private");
+      } else {
+        setGhError(err.response?.data?.message || "Failed to add PR link");
+      }
+    } finally {
+      setGhLoading(false);
+    }
+  };
+
+  const handleRemovePR = async (linkId) => {
+    try {
+      const res = await API.delete(`/tasks/${taskModal.task._id}/github-links/${linkId}`);
+      setTaskModal({ ...taskModal, task: res.data.task });
+    } catch (err) {
+      toast.error("Failed to remove link");
+    }
+  };
 
   /* ── Fetch on mount ── */
   useEffect(() => {
@@ -680,8 +713,8 @@ const Board = () => {
 
         {/* ── Create Column Modal ── */}
         {isColModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setIsColModal(false)}>
-            <div style={{ background: "rgba(10,13,22,0.99)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 32, width: 380, boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setIsColModal(false)}>
+            <div style={{ background: "#1E293B", border: "1px solid #334155", borderRadius: 20, padding: 32, width: 380, boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
               <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginBottom: 6, fontFamily: "Figtree, sans-serif" }}>New Column</div>
               <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 24 }}>Add a new stage to your project workflow.</p>
               <form onSubmit={createBoardHandler}>
@@ -706,8 +739,8 @@ const Board = () => {
 
         {/* ── Task Modal ── */}
         {taskModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setTaskModal(null)}>
-            <div style={{ background: "rgba(10,13,22,0.99)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 32, width: taskModal.mode === "edit" ? 620 : 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setTaskModal(null)}>
+            <div style={{ background: "#1E293B", border: "1px solid #334155", borderRadius: 20, padding: 32, width: taskModal.mode === "edit" ? 620 : 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
 
               {/* Title */}
               <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginBottom: 4, fontFamily: "Figtree, sans-serif" }}>
@@ -828,71 +861,101 @@ const Board = () => {
               {/* ── GitHub Tab ── */}
               {modalTab === "github" && taskModal.mode === "edit" && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  {!taskModal.task.github ? (
+                  {!activeWorkspace?.github?.repoFullName ? (
+                    /* STATE 1: No GitHub repo linked to workspace */
                     <div style={{ textAlign: "center", padding: "40px 0", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px dashed rgba(255,255,255,0.1)" }}>
                       <div style={{ fontSize: 24, marginBottom: 12 }}>🐙</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 6 }}>No GitHub Automation</div>
-                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 280, margin: "0 auto" }}>
-                        Move this task to <strong>In Progress</strong> to automatically create a branch,
-                        or <strong>Done</strong> to open a Pull Request.
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 6 }}>No repository linked</div>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 280, margin: "0 auto", marginBottom: 16 }}>
+                        Link a GitHub repository in workspace settings to enable PR tracking
                       </p>
+                      <button onClick={() => navigate(`/workspace/${workspaceId}/settings?tab=integrations`)} style={{ background: "#4F46E5", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        Go to settings
+                      </button>
+                    </div>
+                  ) : !taskModal.task.githubLinks?.length ? (
+                    /* STATE 2: Repo linked, but no PR links */
+                    <div>
+                      <div style={{ textAlign: "center", padding: "40px 0", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px dashed rgba(255,255,255,0.1)", marginBottom: 20 }}>
+                        <div style={{ fontSize: 24, marginBottom: 12 }}>🐙</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 6 }}>No PR links yet</div>
+                        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 280, margin: "0 auto" }}>
+                          Paste a GitHub PR URL to track it here
+                        </p>
+                      </div>
+                      <form onSubmit={handleAddPR}>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <input
+                            type="url"
+                            placeholder="https://github.com/owner/repo/pull/123"
+                            value={ghUrl}
+                            onChange={e => setGhUrl(e.target.value)}
+                            style={{ flex: 1, padding: "10px 14px", background: "#0F172A", border: "1px solid #334155", borderRadius: 10, color: "#F1F5F9", fontSize: 13, outline: "none" }}
+                          />
+                          <button type="submit" disabled={ghLoading} style={{ background: "#4F46E5", border: "none", borderRadius: 10, padding: "0 20px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: ghLoading ? "not-allowed" : "pointer" }}>
+                            {ghLoading ? "Adding…" : "Add PR"}
+                          </button>
+                        </div>
+                        {ghError && <div style={{ color: "#F87171", fontSize: 12, marginTop: 8 }}>{ghError}</div>}
+                      </form>
                     </div>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      {/* Branch Info */}
-                      <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#818cf8", fontWeight: 700, fontSize: 14 }}>
-                            <IconGitBranch /> Active Branch
-                          </div>
-                          {taskModal.task.github.branchUrl && (
-                            <a href={taskModal.task.github.branchUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>View on GitHub ↗</a>
-                          )}
-                        </div>
-                        <div style={{ background: "rgba(0,0,0,0.2)", padding: "10px 14px", borderRadius: 10, fontFamily: "monospace", fontSize: 13, color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.05)" }}>
-                          {taskModal.task.github.branch || "Not created yet"}
-                        </div>
-                      </div>
+                    /* STATE 3: Has PR links */
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {taskModal.task.githubLinks.map(link => {
+                        const statusColors = {
+                          open: { bg: "rgba(34,197,94,0.1)", text: "#4ade80", border: "rgba(34,197,94,0.2)" },
+                          closed: { bg: "rgba(239,68,68,0.1)", text: "#f87171", border: "rgba(239,68,68,0.2)" },
+                          merged: { bg: "rgba(168,85,247,0.1)", text: "#c084fc", border: "rgba(168,85,247,0.2)" }
+                        };
+                        const sc = statusColors[link.meta?.state?.toLowerCase()] || { bg: "rgba(255,255,255,0.1)", text: "#e2e8f0", border: "rgba(255,255,255,0.2)" };
 
-                      {/* PR Info */}
-                      {taskModal.task.github.pr && (
-                        <div style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 16, padding: 20 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#34d399", fontWeight: 700, fontSize: 14 }}>
-                              <IconGitPR /> Pull Request #{taskModal.task.github.pr.number}
-                            </div>
-                            <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: taskModal.task.github.pr.state === "merged" ? "#a78bfa" : "#34d399", color: "#fff", textTransform: "uppercase" }}>
-                              {taskModal.task.github.pr.state}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 4 }}>{taskModal.task.github.pr.title}</div>
-                          <a href={taskModal.task.github.pr.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#34d399", textDecoration: "none", fontWeight: 600 }}>Review Pull Request →</a>
-                        </div>
-                      )}
-
-                      {/* Commits */}
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                          <IconGitCommit /> Recent Commits ({taskModal.task.github.commits?.length || 0})
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {!taskModal.task.github.commits?.length ? (
-                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "10px 0" }}>No commits synced yet.</div>
-                          ) : (
-                            taskModal.task.github.commits.slice(0, 5).map((c, i) => (
-                              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, color: "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.message}</div>
-                                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{c.author} • {new Date(c.timestamp).toLocaleTimeString()}</div>
-                                </div>
-                                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#818cf8", background: "rgba(129,140,248,0.1)", padding: "2px 6px", borderRadius: 4 }}>
-                                  {c.sha.slice(0, 7)}
-                                </div>
+                        return (
+                          <div key={link._id} style={{ background: "#1E293B", border: "1px solid #334155", borderRadius: 12, padding: 16 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                              <div style={{ fontSize: 12, color: "#94A3B8" }}>{activeWorkspace.github.repoFullName}</div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <span style={{ background: sc.bg, color: sc.text, border: `1px solid ${sc.border}`, padding: "2px 8px", borderRadius: 12, fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
+                                  {link.meta?.state || "Unknown"}
+                                </span>
+                                <button onClick={() => handleRemovePR(link._id)} style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer", padding: 4 }} title="Remove link">
+                                  <IconTrash />
+                                </button>
                               </div>
-                            ))
-                          )}
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: "#E2E8F0", marginBottom: 12 }}>
+                              {link.meta?.title || link.url}
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94A3B8" }}>
+                                <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff" }}>
+                                  {(link.meta?.author || "?")[0].toUpperCase()}
+                                </div>
+                                @{link.meta?.author || "unknown"}
+                              </div>
+                              <a href={link.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#818cf8", textDecoration: "none" }} onMouseEnter={e => e.currentTarget.style.textDecoration="underline"} onMouseLeave={e => e.currentTarget.style.textDecoration="none"}>
+                                Open on GitHub ↗
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      <form onSubmit={handleAddPR} style={{ marginTop: 8 }}>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <input
+                            type="url"
+                            placeholder="Add another PR URL..."
+                            value={ghUrl}
+                            onChange={e => setGhUrl(e.target.value)}
+                            style={{ flex: 1, padding: "10px 14px", background: "#0F172A", border: "1px dashed #334155", borderRadius: 10, color: "#F1F5F9", fontSize: 13, outline: "none" }}
+                          />
+                          <button type="submit" disabled={ghLoading || !ghUrl.trim()} style={{ background: "transparent", border: "1px dashed #334155", borderRadius: 10, padding: "0 20px", color: ghUrl.trim() ? "#F1F5F9" : "#64748B", fontSize: 13, fontWeight: 600, cursor: ghLoading ? "not-allowed" : (ghUrl.trim() ? "pointer" : "default") }}>
+                            {ghLoading ? "Adding…" : "+ Add"}
+                          </button>
                         </div>
-                      </div>
+                        {ghError && <div style={{ color: "#F87171", fontSize: 12, marginTop: 8 }}>{ghError}</div>}
+                      </form>
                     </div>
                   )}
                 </div>
@@ -904,7 +967,7 @@ const Board = () => {
 
         <style>{`
           @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-          select option { background: #0f1117; }
+          select option { background: #0F172A; }
         `}</style>
       </div>
     </AppShell>

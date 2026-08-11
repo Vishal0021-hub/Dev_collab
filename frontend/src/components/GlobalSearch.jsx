@@ -103,11 +103,11 @@ export default function GlobalSearch({ onClose }) {
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "80px 20px 20px", background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "80px 20px 20px", background: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(8px)" }}
       onClick={onClose}
     >
       <div
-        style={{ width: "100%", maxWidth: 640, background: "rgba(10,13,22,0.98)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 18, overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}
+        style={{ width: "100%", maxWidth: 640, background: "#1E293B", border: "1px solid #334155", borderRadius: 18, overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}

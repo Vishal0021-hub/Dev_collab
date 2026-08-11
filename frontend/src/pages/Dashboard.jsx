@@ -274,7 +274,7 @@ export default function Dashboard() {
 
         {/* ── Create Workspace Modal ── */}
         {isModalOpen && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setIsModalOpen(false)}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setIsModalOpen(false)}>
             <div style={{ background: "#1E293B", border: "1px solid #334155", borderRadius: 20, padding: 32, width: 400, boxShadow: "0 24px 60px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#F1F5F9", marginBottom: 6, fontFamily: "var(--font-display, Inter)" }}>New Workspace</div>
               <p style={{ fontSize: 13, color: "#94A3B8", marginBottom: 24 }}>Give your team environment a memorable name.</p>

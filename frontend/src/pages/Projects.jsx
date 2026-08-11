@@ -304,7 +304,7 @@ const Projects = () => {
 
         {/* ── Create Project Modal ── */}
         {isModalOpen && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setIsModalOpen(false)}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setIsModalOpen(false)}>
             <div style={{ background: "#1E293B", border: "1px solid #334155", borderRadius: 20, padding: 32, width: 420, boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: "#4F46E5", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "#fff" }}>
                 <IconFolder size={22}/>
