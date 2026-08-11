@@ -81,7 +81,7 @@ const AssignDropdown = ({ members = [], selectedId, onSelect }) => {
       {isOpen && (
         <div style={{
           position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0,
-          background: "#0f111a",
+          background: "#1E293B",
           border: "1px solid var(--border)",
           borderRadius: 18, zIndex: 1000,
           boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)",
@@ -97,9 +97,9 @@ const AssignDropdown = ({ members = [], selectedId, onSelect }) => {
               placeholder="Search members..."
               style={{
                 width: "100%", padding: "8px 12px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid var(--border)",
-                borderRadius: 10, color: "#fff", fontSize: 13,
+                background: "#0F172A",
+                border: "1px solid #334155",
+                borderRadius: 10, color: "#F1F5F9", fontSize: 13,
                 outline: "none",
               }}
             />

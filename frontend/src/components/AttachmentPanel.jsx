@@ -135,7 +135,7 @@ export default function AttachmentPanel({ taskId, isAdmin }) {
           <div style={{ width: "100%", height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 4, overflow: "hidden" }}>
             <div style={{
               height: "100%", width: `${progress}%`,
-              background: "linear-gradient(90deg,#6366f1,#8b5cf6)",
+              background: "#4F46E5",
               borderRadius: 4, transition: "width 0.3s ease"
             }}/>
           </div>

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+  /* DevSpace color system:
+     Page:     #0F172A  (slate-950)
+     Card:     #1E293B  (slate-800)
+     Elevated: #253448
+     Border:   #334155  (slate-700)
+     Primary:  #6366F1  (indigo-500)
+  */
+
 /* ─── Tailwind v4 design tokens ─────────────────────────────── */
 @theme {
   /* Fonts */
@@ -82,15 +90,15 @@ body {
 }
 
 /* ─── Scrollbar polish ───────────────────────────────────────── */
-::-webkit-scrollbar          { width: 5px; height: 5px; }
-::-webkit-scrollbar-track    { background: transparent; }
-::-webkit-scrollbar-thumb    { background: #334155; border-radius: 999px; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0F172A; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
 /* ─── Focus ring ─────────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
 }
 
 /* ─── Base Card utility ──────────────────────────────────────── */

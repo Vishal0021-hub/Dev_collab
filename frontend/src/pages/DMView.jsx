@@ -153,7 +153,7 @@ export default function DMView() {
             onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.4)"}
           ><IconBack/></button>
           <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)" }}/>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#BAE6FD" }}>
             {recipientName[0].toUpperCase()}
           </div>
           <div>
@@ -179,7 +179,7 @@ export default function DMView() {
             </div>
           ) : messages.length === 0 ? (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.3)", gap: 12 }}>
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "#fff" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "#BAE6FD" }}>
                 {recipientName[0].toUpperCase()}
               </div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Start a conversation with {recipientName}</div>
@@ -194,7 +194,7 @@ export default function DMView() {
                   <div key={msg._id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "4px 0" }}>
                     <div style={{ width: 36, height: 36, flexShrink: 0 }}>
                       {showAvatar && (
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: isMe ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "linear-gradient(135deg,#0ea5e9,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: isMe ? "#312E81" : "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: isMe ? "#C7D2FE" : "#BAE6FD" }}>
                           {(msg.sender?.name || "U")[0].toUpperCase()}
                         </div>
                       )}
@@ -241,7 +241,7 @@ export default function DMView() {
             <button
               type="submit"
               disabled={!content.trim() || sending}
-              style={{ background: content.trim() ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "rgba(255,255,255,0.08)", border: "none", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: content.trim() ? "pointer" : "not-allowed", color: "#fff", transition: "all 0.2s", flexShrink: 0 }}
+              style={{ background: content.trim() ? "#4F46E5" : "rgba(255,255,255,0.08)", border: "none", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: content.trim() ? "pointer" : "not-allowed", color: "#fff", transition: "all 0.2s", flexShrink: 0 }}
             >
               <IconSend/>
             </button>
